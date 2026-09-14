@@ -1,0 +1,2086 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Lern-App für Windows CMD, PowerShell und Active Directory - Konzepte, Befehle und ihre Zusammenhänge.">
+<meta name="theme-color" content="#06121a">
+<title>Konsole &amp; Verzeichnis – CMD, PowerShell, Active Directory</title>
+<style>
+:root{
+  --bg:#06121a;
+  --bg-deep:#040c12;
+  --panel:#0c1c26;
+  --panel-2:#102530;
+  --line:#1b3a48;
+  --line-soft:#153040;
+  --ink:#d8e8ef;
+  --ink-dim:#8aa8b6;
+  --ink-faint:#5f7d8c;
+
+  --teal:#2dd4bf;
+  --emerald:#34d399;
+  --ps:#6ea8fe;
+  --ps-deep:#1e5fa8;
+  --cmd:#c6d4dc;
+  --ad:#2dd4bf;
+  --amber:#f0b429;
+  --rose:#f87171;
+
+  --mono:"Cascadia Mono","Consolas","SF Mono","DejaVu Sans Mono",monospace;
+  --sans:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",sans-serif;
+
+  --r:10px;
+  --shell-w:280px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.65;
+  -webkit-text-size-adjust:100%;
+  overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(1100px 620px at 78% -12%,rgba(45,212,191,.10),transparent 62%),
+             radial-gradient(760px 480px at 4% 104%,rgba(110,168,254,.08),transparent 60%);
+}
+a{color:var(--teal)}
+h1,h2,h3,h4{line-height:1.25;margin:0 0 .5em;font-weight:600;letter-spacing:-.01em}
+h2{font-size:1.55rem;margin-top:0}
+h3{font-size:1.12rem;margin-top:2rem;color:#eaf5f9}
+h4{font-size:.98rem;margin-top:1.4rem;color:var(--teal);font-weight:600}
+p{margin:0 0 1rem}
+ul,ol{margin:0 0 1rem;padding-left:1.25rem}
+li{margin-bottom:.4rem}
+code{font-family:var(--mono);font-size:.88em;background:#0a1f2a;border:1px solid var(--line-soft);
+  border-radius:5px;padding:.1em .38em;color:#a9e9dd;white-space:nowrap}
+strong{color:#f0fafd;font-weight:600}
+
+/* ---------- Kopfzeile ---------- */
+.topbar{
+  position:sticky;top:0;z-index:40;
+  display:flex;align-items:center;gap:.7rem;
+  padding:.55rem .8rem;
+  padding-top:calc(.55rem + env(safe-area-inset-top));
+  background:rgba(4,12,18,.93);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:.55rem;font-weight:600;font-size:.98rem;letter-spacing:-.01em;min-width:0}
+.brand .caret{font-family:var(--mono);color:var(--teal);flex:0 0 auto}
+.brand span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{
+  background:var(--panel);border:1px solid var(--line);color:var(--ink);
+  width:38px;height:38px;border-radius:9px;font-size:1.05rem;cursor:pointer;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;
+}
+.iconbtn:hover{border-color:var(--teal);color:var(--teal)}
+.spacer{flex:1}
+.progress-mini{display:flex;align-items:center;gap:.45rem;font-size:.74rem;color:var(--ink-faint);font-family:var(--mono)}
+.progress-mini .track{width:56px;height:5px;border-radius:3px;background:#0e2836;overflow:hidden}
+.progress-mini .fill{height:100%;background:linear-gradient(90deg,var(--ps),var(--teal));width:0%}
+
+/* ---------- Navigation ---------- */
+.shell{display:flex}
+nav.side{
+  width:var(--shell-w);flex:0 0 var(--shell-w);
+  position:sticky;top:53px;align-self:flex-start;z-index:2;
+  height:calc(100vh - 53px);overflow-y:auto;
+  border-right:1px solid var(--line);
+  padding:1rem .6rem 3rem;
+  background:var(--bg-deep);
+}
+nav.side .navgroup{font-size:.68rem;letter-spacing:.09em;color:var(--ink-faint);
+  font-family:var(--mono);margin:1.3rem .6rem .45rem;text-transform:uppercase}
+nav.side .navgroup:first-child{margin-top:0}
+.navitem{
+  display:flex;align-items:center;gap:.55rem;width:100%;text-align:left;
+  background:none;border:0;border-left:2px solid transparent;
+  color:var(--ink-dim);font:inherit;font-size:.9rem;
+  padding:.46rem .6rem;border-radius:0 7px 7px 0;cursor:pointer;
+}
+.navitem:hover{background:#0d2029;color:var(--ink)}
+.navitem.active{background:#0f2a36;color:#eafcf8;border-left-color:var(--teal)}
+.navitem .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:#22414f}
+.navitem.done .dot{background:var(--emerald);box-shadow:0 0 7px rgba(52,211,153,.55)}
+.navitem .lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- Inhalt ---------- */
+main{flex:1;min-width:0;padding:1.6rem 1.5rem 6rem;max-width:900px;position:relative;z-index:1}
+.view{display:none}
+.view.on{display:block;animation:fade .22s ease}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.eyebrow{font-family:var(--mono);font-size:.74rem;color:var(--ink-faint);margin-bottom:.35rem}
+.lede{color:var(--ink-dim);font-size:1.02rem;border-left:2px solid var(--line);padding-left:.9rem;margin-bottom:1.8rem}
+
+/* ---------- Bausteine ---------- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:1rem 1.1rem;margin:1.1rem 0}
+.card.tight{padding:.75rem .9rem}
+.grid{display:grid;gap:.8rem;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));margin:1.1rem 0}
+
+.term{
+  background:var(--bg-deep);border:1px solid var(--line);border-radius:var(--r);
+  margin:1rem 0;overflow:hidden;
+}
+.term-head{
+  display:flex;align-items:center;gap:.5rem;padding:.4rem .7rem;
+  background:var(--panel-2);border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:.72rem;color:var(--ink-faint);
+}
+.term-head .tag{padding:.05rem .4rem;border-radius:4px;font-size:.66rem;letter-spacing:.04em}
+.tag.t-cmd{background:#243139;color:var(--cmd)}
+.tag.t-ps{background:#122a4a;color:var(--ps)}
+.tag.t-ad{background:#0d3b39;color:var(--ad)}
+.term pre{
+  margin:0;padding:.8rem .85rem;overflow-x:auto;
+  font-family:var(--mono);font-size:.83rem;line-height:1.7;color:#cfe7ef;
+  -webkit-overflow-scrolling:touch;
+}
+.term pre .c{color:var(--ink-faint)}
+.term pre .p{color:var(--emerald)}
+.term pre .o{color:var(--amber)}
+.term pre .s{color:#e79ad8}
+.copy{margin-left:auto;background:none;border:1px solid var(--line);color:var(--ink-faint);
+  border-radius:5px;font-size:.66rem;font-family:var(--mono);padding:.1rem .4rem;cursor:pointer}
+.copy:hover{color:var(--teal);border-color:var(--teal)}
+
+.note{border-left:3px solid var(--teal);background:#0b2129;padding:.75rem .9rem;border-radius:0 8px 8px 0;margin:1.1rem 0;font-size:.94rem}
+.note.warn{border-left-color:var(--amber);background:#231c0c}
+.note.stop{border-left-color:var(--rose);background:#241214}
+.note b{display:block;margin-bottom:.2rem;color:#eafcf8}
+
+.tblwrap{overflow-x:auto;margin:1.1rem 0;-webkit-overflow-scrolling:touch;
+  border:1px solid var(--line);border-radius:var(--r)}
+table{border-collapse:collapse;width:100%;font-size:.87rem;min-width:480px}
+th{background:var(--panel-2);text-align:left;padding:.55rem .7rem;font-weight:600;color:#eafcf8;
+  border-bottom:1px solid var(--line);white-space:nowrap;font-size:.82rem}
+td{padding:.55rem .7rem;border-bottom:1px solid var(--line-soft);vertical-align:top;color:var(--ink-dim)}
+tr:last-child td{border-bottom:0}
+td code{white-space:normal}
+
+.chips{display:flex;flex-wrap:wrap;gap:.4rem;margin:.9rem 0}
+.chip{
+  background:var(--panel);border:1px solid var(--line);color:var(--ink-dim);
+  border-radius:20px;padding:.28rem .75rem;font-size:.8rem;cursor:pointer;font:inherit;font-size:.8rem;
+}
+.chip:hover{border-color:var(--ink-faint);color:var(--ink)}
+.chip.on{background:#0f3038;border-color:var(--teal);color:#a9f0e4}
+
+/* ---------- Befehlssuche ---------- */
+.searchbar{display:flex;gap:.5rem;margin:1rem 0;position:sticky;top:53px;z-index:20;
+  background:var(--bg);padding:.6rem 0}
+.searchbar input{
+  flex:1;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  color:var(--ink);font:inherit;font-size:.95rem;padding:.6rem .8rem;font-family:var(--mono);
+}
+.searchbar input:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:transparent}
+.cmdrow{
+  border:1px solid var(--line);border-left-width:3px;border-radius:8px;
+  background:var(--panel);margin-bottom:.55rem;overflow:hidden;
+}
+.cmdrow.s-cmd{border-left-color:#6e8493}
+.cmdrow.s-ps{border-left-color:var(--ps)}
+.cmdrow.s-ad{border-left-color:var(--ad)}
+.cmdrow > button{
+  width:100%;background:none;border:0;color:inherit;font:inherit;text-align:left;
+  padding:.6rem .8rem;cursor:pointer;display:flex;gap:.6rem;align-items:baseline;
+}
+.cmdrow > button:hover{background:var(--panel-2)}
+.cmdrow .name{font-family:var(--mono);font-size:.88rem;color:#a9e9dd;flex:0 0 auto}
+.cmdrow.s-ps .name{color:#a8c9ff}
+.cmdrow.s-cmd .name{color:#dbe6ec}
+.cmdrow .short{font-size:.83rem;color:var(--ink-faint);flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmdrow .body{display:none;padding:0 .8rem .8rem;font-size:.89rem;border-top:1px solid var(--line-soft)}
+.cmdrow.open .body{display:block}
+.cmdrow .body p{margin:.7rem 0 .5rem;color:var(--ink-dim)}
+.cmdrow .body .ex{font-family:var(--mono);font-size:.8rem;background:var(--bg-deep);
+  border:1px solid var(--line-soft);border-radius:7px;padding:.5rem .6rem;overflow-x:auto;white-space:pre;color:#cfe7ef}
+.cmdrow .body .rel{font-size:.78rem;color:var(--ink-faint);margin-top:.5rem}
+.counter{font-family:var(--mono);font-size:.78rem;color:var(--ink-faint);margin:.4rem 0 .8rem}
+.catline{font-family:var(--mono);font-size:.72rem;color:var(--ink-faint);
+  margin:1.4rem 0 .5rem;border-bottom:1px solid var(--line-soft);padding-bottom:.25rem}
+
+/* ---------- Quiz ---------- */
+.q{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:1rem;margin-bottom:.9rem}
+.q .qtext{font-weight:500;margin-bottom:.75rem;color:#eafcf8}
+.opt{display:block;width:100%;text-align:left;background:var(--bg-deep);border:1px solid var(--line);
+  color:var(--ink-dim);border-radius:8px;padding:.55rem .75rem;margin-bottom:.4rem;cursor:pointer;font:inherit;font-size:.92rem}
+.opt:hover:not(:disabled){border-color:var(--ink-faint);color:var(--ink)}
+.opt:disabled{cursor:default}
+.opt.right{border-color:var(--emerald);background:#0d2a20;color:#b6f0d6}
+.opt.wrong{border-color:var(--rose);background:#2a1416;color:#f3b8b8}
+.expl{font-size:.86rem;color:var(--ink-dim);border-left:2px solid var(--teal);padding-left:.7rem;margin-top:.6rem;display:none}
+.expl.on{display:block}
+.btn{background:linear-gradient(135deg,var(--ps-deep),#0d6a63);border:0;color:#eafcf8;font:inherit;
+  font-weight:600;padding:.6rem 1.1rem;border-radius:9px;cursor:pointer;font-size:.93rem}
+.btn:hover{filter:brightness(1.14)}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--ink-dim);font-weight:400}
+.btn.ghost:hover{border-color:var(--teal);color:var(--teal)}
+.scorebox{font-family:var(--mono);font-size:.85rem;color:var(--ink-dim);margin-bottom:1rem}
+
+/* ---------- Fußnavigation ---------- */
+.pager{display:flex;gap:.6rem;align-items:center;margin-top:2.5rem;padding-top:1.2rem;border-top:1px solid var(--line)}
+.readtoggle{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:var(--ink-dim);cursor:pointer;user-select:none}
+.readtoggle input{accent-color:var(--emerald);width:17px;height:17px}
+
+/* ---------- Quellenliste ---------- */
+.src{display:block;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  padding:.7rem .85rem;margin-bottom:.55rem;text-decoration:none;color:inherit}
+.src:hover{border-color:var(--teal)}
+.src .t{color:#eafcf8;font-size:.93rem;font-weight:500}
+.src .u{font-family:var(--mono);font-size:.73rem;color:var(--ink-faint);word-break:break-all}
+.src .d{font-size:.83rem;color:var(--ink-dim);margin-top:.2rem}
+
+/* ---------- Impressum ---------- */
+.legal dt{font-size:.74rem;color:var(--ink-faint);font-family:var(--mono);margin-top:.6rem}
+.legal dd{margin:0;color:var(--ink)}
+.paypal{display:inline-block;background:#ffc439;color:#12232e;font-weight:700;text-decoration:none;
+  padding:.6rem 1.3rem;border-radius:24px;margin:.4rem 0}
+.paypal:hover{filter:brightness(1.07)}
+
+.scrim{display:none}
+@media(max-width:860px){
+  main{padding:1.1rem 1rem 5rem;max-width:100%}
+  nav.side{
+    position:fixed;top:0;left:0;height:100%;z-index:60;
+    transform:translateX(-100%);transition:transform .22s ease;
+    padding-top:calc(1rem + env(safe-area-inset-top));width:270px;
+  }
+  nav.side.open{transform:none}
+  .scrim{display:block;position:fixed;inset:0;background:rgba(2,8,12,.66);z-index:55;opacity:0;
+    pointer-events:none;transition:opacity .22s}
+  .scrim.on{opacity:1;pointer-events:auto}
+  h2{font-size:1.34rem}
+  .searchbar{top:0}
+  body{font-size:15.5px}
+}
+@media(min-width:861px){ .iconbtn.menu{display:none} }
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:4px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <button class="iconbtn menu" id="menuBtn" aria-label="Navigation öffnen">☰</button>
+  <div class="brand"><span class="caret">PS&gt;</span><span>Konsole &amp; Verzeichnis</span></div>
+  <div class="spacer"></div>
+  <div class="progress-mini" title="Gelesene Kapitel">
+    <div class="track"><div class="fill" id="progFill"></div></div>
+    <span id="progTxt">0/0</span>
+  </div>
+</header>
+
+<div class="scrim" id="scrim"></div>
+
+<div class="shell">
+  <nav class="side" id="sideNav"></nav>
+  <main id="main"></main>
+</div>
+
+<script>
+"use strict";
+
+var LEGAL = {
+  name: "Alexander Scherer",
+  street: "Mertensstraße 18",
+  city: "13587 Berlin",
+  country: "Deutschland",
+  email: "info@alexander-scherer.com",
+  paypal: "https://www.paypal.com/paypalme/AlexanderGlauche"
+};
+
+/* =====================================================================
+   BEFEHLSDATENBANK
+   Format: [Name, Kategorie, Kurzbeschreibung, Erklärung, Beispiel, Bezug]
+   ===================================================================== */
+
+var CMD_DB = [
+["cmd","Shell-Grundlagen","Startet eine neue Instanz des Befehlsinterpreters","cmd.exe ist der Interpreter selbst. /c führt einen Befehl aus und beendet sich, /k führt aus und bleibt offen. Liegt unter %SystemRoot%\\System32\\cmd.exe.","cmd /c \"ipconfig /all\"\ncmd /k cd C:\\Temp","PowerShell-Pendant: pwsh -Command bzw. powershell -Command"],
+["help","Shell-Grundlagen","Listet die eingebauten Befehle auf","Zeigt nur die internen Befehle von cmd.exe. Externe Programme (z.B. ping.exe) stehen nicht in dieser Liste - die findest du über where oder die Microsoft-Referenz.","help\nhelp dir","PowerShell: Get-Command und Get-Help"],
+["<befehl> /?","Shell-Grundlagen","Zeigt die Hilfe zu einem Befehl","Der Standardweg zur Syntax. Fast jedes Windows-Kommandozeilenwerkzeug unterstützt /? - manche zusätzlich -h oder --help.","robocopy /?\nnetsh /?","PowerShell: Get-Help <Cmdlet> -Full"],
+["cls","Shell-Grundlagen","Leert den Bildschirminhalt","Löscht nur die Anzeige, nicht den Verlauf oder Variablen.","cls","PowerShell: Clear-Host (Alias cls)"],
+["exit","Shell-Grundlagen","Beendet die Sitzung","Mit /b wird nur das aktuelle Batch-Skript beendet, nicht die Konsole. Der optionale Code landet in ERRORLEVEL.","exit\nexit /b 1","PowerShell: exit, $LASTEXITCODE"],
+["doskey","Shell-Grundlagen","Verwaltet Makros und den Befehlsverlauf","doskey /history gibt alle Befehle der Sitzung aus - praktisch für die Dokumentation dessen, was du gerade gemacht hast.","doskey /history > verlauf.txt\ndoskey ll=dir /a $*","PowerShell: Get-History, Set-Alias"],
+["title","Shell-Grundlagen","Setzt den Fenstertitel","Hilfreich, wenn mehrere Konsolen offen sind.","title Wartung Server01",""],
+["color","Shell-Grundlagen","Ändert Vorder- und Hintergrundfarbe","Zwei Hex-Ziffern: erste = Hintergrund, zweite = Schrift.","color 0A",""],
+["chcp","Shell-Grundlagen","Zeigt oder setzt die Codepage","Wichtig bei Umlautproblemen. 850 ist die deutsche DOS-Codepage, 65001 ist UTF-8.","chcp 65001","PowerShell: $OutputEncoding, [Console]::OutputEncoding"],
+["prompt","Shell-Grundlagen","Verändert die Eingabeaufforderung","$P = Pfad, $G = Größer-Zeichen, $T = Uhrzeit.","prompt $T$G","PowerShell: function prompt {...}"],
+["ver","Shell-Grundlagen","Zeigt die Windows-Version","Sehr grobe Ausgabe. systeminfo oder winver liefern mehr.","ver","PowerShell: [Environment]::OSVersion"],
+
+["dir","Dateisystem","Listet Dateien und Ordner","/a zeigt auch versteckte und Systemdateien, /s durchsucht Unterordner, /b liefert die nackte Liste ohne Kopfzeilen (gut für Skripte), /o sortiert.","dir /a /s /b C:\\Logs\\*.log\ndir /o-d","PowerShell: Get-ChildItem (Aliase dir, ls, gci)"],
+["cd","Dateisystem","Wechselt das Verzeichnis","Ohne /d wechselt cd nicht das Laufwerk. cd .. geht eine Ebene hoch.","cd /d D:\\Daten\ncd ..","PowerShell: Set-Location (Aliase cd, sl)"],
+["pushd","Dateisystem","Merkt sich das Verzeichnis und wechselt","Bei einem UNC-Pfad bindet pushd automatisch einen temporären Laufwerksbuchstaben ein - das ist der eigentliche Trick daran.","pushd \\\\srv01\\share\npopd","PowerShell: Push-Location / Pop-Location"],
+["popd","Dateisystem","Kehrt zum gemerkten Verzeichnis zurück","Hebt eine per pushd gesetzte temporäre Netzlaufwerksverbindung wieder auf.","popd","PowerShell: Pop-Location"],
+["md","Dateisystem","Erstellt ein Verzeichnis","Auch mkdir. Legt bei aktivierten Befehlserweiterungen ganze Pfadketten auf einmal an.","md C:\\Projekt\\2026\\Q1","PowerShell: New-Item -ItemType Directory"],
+["rd","Dateisystem","Löscht ein Verzeichnis","Auch rmdir. /s löscht rekursiv, /q ohne Rückfrage. Diese Kombination ist endgültig - kein Papierkorb.","rd /s /q C:\\Temp\\Alt","PowerShell: Remove-Item -Recurse -Force"],
+["del","Dateisystem","Löscht Dateien","/f auch schreibgeschützte, /s in Unterordnern, /q ohne Nachfrage. Kein Papierkorb.","del /f /s /q C:\\Temp\\*.tmp","PowerShell: Remove-Item"],
+["copy","Dateisystem","Kopiert einzelne Dateien","Der älteste Kopierbefehl. Kann keine Verzeichnisbäume - dafür xcopy oder robocopy.","copy C:\\a.txt D:\\b.txt","PowerShell: Copy-Item"],
+["xcopy","Dateisystem","Kopiert Verzeichnisbäume","/e inklusive leerer Ordner, /h versteckte Dateien, /k Attribute behalten, /y ohne Rückfrage überschreiben. Gilt als veraltet zugunsten von robocopy.","xcopy C:\\Quelle D:\\Ziel /e /h /i /y","robocopy ist der moderne Nachfolger"],
+["robocopy","Dateisystem","Robustes Kopieren und Spiegeln","Das Arbeitspferd für Migrationen. /mir spiegelt exakt (löscht im Ziel, was in der Quelle fehlt), /copyall überträgt alle NTFS-Informationen inkl. ACLs, /r und /w begrenzen Wiederholversuche, /log schreibt Protokoll. Rückgabecodes unter 8 bedeuten Erfolg.","robocopy C:\\Daten D:\\Backup /mir /copyall /r:2 /w:5 /log:C:\\rc.log","Achtung: /mir löscht im Ziel. Vorher mit /l testen."],
+["move","Dateisystem","Verschiebt oder benennt um","Innerhalb eines Laufwerks nur ein Verzeichniseintrag-Update, über Laufwerke hinweg echtes Kopieren plus Löschen.","move C:\\alt.txt D:\\neu.txt","PowerShell: Move-Item"],
+["ren","Dateisystem","Benennt Dateien um","Auch rename. Kann nicht zwischen Verzeichnissen verschieben.","ren bericht.txt bericht_alt.txt","PowerShell: Rename-Item"],
+["type","Dateisystem","Gibt Dateiinhalt aus","Der schnelle Blick in eine Textdatei.","type C:\\Logs\\app.log","PowerShell: Get-Content (Aliase cat, type, gc)"],
+["more","Dateisystem","Seitenweise Ausgabe","Wird meist über die Pipe genutzt, wenn eine Ausgabe zu lang ist.","dir /s | more","PowerShell: Out-Host -Paging, more"],
+["tree","Dateisystem","Zeigt die Ordnerstruktur grafisch","/f zeigt zusätzlich die Dateien, /a nutzt ASCII statt Grafikzeichen (wichtig beim Umleiten in Dateien).","tree C:\\Projekt /f /a > struktur.txt",""],
+["fc","Dateisystem","Vergleicht zwei Dateien","/b vergleicht binär. Gut zum Prüfen, ob zwei Konfigurationen identisch sind.","fc /b datei1.dll datei2.dll","PowerShell: Compare-Object"],
+["comp","Dateisystem","Vergleicht Dateien byteweise","Ältere Alternative zu fc.","comp a.bin b.bin",""],
+["findstr","Dateisystem","Durchsucht Dateien nach Textmustern","Das grep von Windows. /i ignoriert Groß-/Kleinschreibung, /s sucht rekursiv, /n zeigt Zeilennummern, /c:\"...\" sucht eine feste Zeichenkette, /r erlaubt reguläre Ausdrücke.","findstr /s /i /n /c:\"Fehler 0x\" C:\\Logs\\*.log","PowerShell: Select-String (Alias sls)"],
+["find","Dateisystem","Sucht eine Zeichenkette in Dateien","Älter und schwächer als findstr, kann aber mit /c zählen.","tasklist | find /c \"chrome\"","PowerShell: Select-String"],
+["where","Dateisystem","Findet den Pfad einer ausführbaren Datei","Zeigt, welche EXE bei einem Befehl tatsächlich startet - entscheidend bei PATH-Problemen.","where powershell\nwhere /r C:\\ *.msi","PowerShell: Get-Command <Name>"],
+["attrib","Dateisystem","Zeigt und ändert Dateiattribute","+r schreibgeschützt, +h versteckt, +s System, /s rekursiv. Klassiker beim Bereinigen von USB-Sticks.","attrib -h -s -r /s /d E:\\*.*","PowerShell: (Get-Item x).Attributes"],
+["icacls","Dateisystem","Verwaltet NTFS-Berechtigungen","/grant vergibt, /remove entzieht, /inheritance:r entfernt Vererbung, /t rekursiv. Mit /save und /restore lassen sich ACLs sichern und zurückspielen.","icacls D:\\Daten /grant \"DOM\\Abteilung-Vertrieb\":(OI)(CI)M /t","PowerShell: Get-Acl / Set-Acl"],
+["takeown","Dateisystem","Übernimmt den Besitz einer Datei","Nötig, bevor man Berechtigungen an fremden Objekten setzen kann. /f Datei, /r rekursiv.","takeown /f C:\\Windows\\Temp\\alt /r /d j","Typisch kombiniert mit anschließendem icacls"],
+["compact","Dateisystem","Steuert NTFS-Komprimierung","/c komprimiert, /u dekomprimiert, /s rekursiv.","compact /c /s:C:\\Archiv",""],
+["cipher","Dateisystem","EFS-Verschlüsselung und sicheres Löschen","/w überschreibt freien Speicherplatz - nützlich vor der Weitergabe eines Datenträgers.","cipher /w:C:\\",""],
+["mklink","Dateisystem","Erstellt Verknüpfungen im Dateisystem","Ohne Schalter eine Dateisymlink, /d Verzeichnissymlink, /j Junction, /h Hardlink. Erfordert Administratorrechte (außer im Entwicklermodus).","mklink /d C:\\Kurz D:\\Sehr\\Langer\\Pfad","PowerShell: New-Item -ItemType SymbolicLink"],
+["subst","Dateisystem","Bildet einen Pfad als Laufwerk ab","Nur lokal und nicht über Neustarts hinweg persistent.","subst X: C:\\Projekte\\Aktuell",""],
+["label","Dateisystem","Setzt die Datenträgerbezeichnung","","label D: Archiv2026",""],
+["vol","Dateisystem","Zeigt Bezeichnung und Seriennummer","","vol C:",""],
+["clip","Dateisystem","Leitet Ausgaben in die Zwischenablage","Sehr praktisch, um Befehlsausgaben in ein Ticket zu kopieren.","ipconfig /all | clip","PowerShell: Set-Clipboard"],
+
+["ipconfig","Netzwerk","Zeigt und verwaltet die IP-Konfiguration","/all zeigt MAC-Adresse, DHCP-Server, DNS-Server und Lease-Zeiten. /release und /renew erneuern die DHCP-Adresse. /flushdns leert den DNS-Cache, /displaydns zeigt ihn an. /registerdns meldet den Rechner erneut im DNS an - relevant in AD-Umgebungen.","ipconfig /all\nipconfig /flushdns\nipconfig /registerdns","PowerShell: Get-NetIPConfiguration, Clear-DnsClientCache"],
+["ping","Netzwerk","Prüft die Erreichbarkeit per ICMP","-t dauerhaft, -n Anzahl, -l Paketgröße, -4/-6 Protokollwahl. Keine Antwort heißt nicht zwingend offline - Firewalls blocken ICMP oft.","ping -n 4 dc01.firma.local\nping -t 8.8.8.8","PowerShell: Test-Connection, Test-NetConnection"],
+["tracert","Netzwerk","Verfolgt den Weg zum Ziel","Zeigt jeden Router (Hop) auf dem Pfad. -d verzichtet auf Namensauflösung und ist dadurch schneller.","tracert -d 1.1.1.1","PowerShell: Test-NetConnection -TraceRoute"],
+["pathping","Netzwerk","Kombiniert tracert mit Paketverlustmessung","Braucht deutlich länger, zeigt dafür pro Hop die Verlustrate - gut bei sporadischen Aussetzern.","pathping -q 50 srv01",""],
+["nslookup","Netzwerk","Fragt DNS-Einträge ab","Interaktiv oder direkt. set type=SRV ist der Schlüssel zur AD-Fehlersuche, weil Clients ihre Domänencontroller über SRV-Records finden.","nslookup -type=SRV _ldap._tcp.dc._msdcs.firma.local","PowerShell: Resolve-DnsName"],
+["netstat","Netzwerk","Zeigt Verbindungen und offene Ports","-a alle Verbindungen, -n numerisch, -o mit Prozess-ID, -b mit Programmnamen (Adminrechte). Die Kombination -ano ist der Standard bei Portkonflikten.","netstat -ano | findstr :445","PowerShell: Get-NetTCPConnection"],
+["arp","Netzwerk","Zeigt die MAC-zu-IP-Zuordnung","-a listet den Cache, -d löscht ihn. Wichtig bei doppelten IPs im LAN.","arp -a\narp -d *","PowerShell: Get-NetNeighbor"],
+["route","Netzwerk","Zeigt und ändert die Routingtabelle","print zeigt, add ergänzt, -p macht eine Route dauerhaft.","route print\nroute add 10.10.0.0 mask 255.255.0.0 192.168.1.1 -p","PowerShell: Get-NetRoute, New-NetRoute"],
+["netsh","Netzwerk","Umfangreiches Netzwerk-Konfigurationswerkzeug","Arbeitet mit Kontexten. interface ip für Adressen, wlan für Funknetze, advfirewall für die Firewall, winsock reset als letzte Rettung bei kaputtem Netzwerkstack.","netsh interface ip set address \"Ethernet\" static 192.168.1.50 255.255.255.0 192.168.1.1\nnetsh wlan show profiles\nnetsh advfirewall set allprofiles state off","PowerShell: NetTCPIP- und NetSecurity-Module"],
+["nbtstat","Netzwerk","NetBIOS-Informationen über TCP/IP","-n lokale Namen, -A fragt eine IP ab. Nur noch in älteren Umgebungen relevant.","nbtstat -A 192.168.1.20",""],
+["telnet","Netzwerk","Prüft, ob ein TCP-Port erreichbar ist","Muss als optionales Feature nachinstalliert werden. Ein schwarzer Bildschirm bedeutet: Port offen.","telnet dc01 389","PowerShell: Test-NetConnection -Port 389"],
+["hostname","Netzwerk","Zeigt den Computernamen","","hostname","PowerShell: $env:COMPUTERNAME"],
+["getmac","Netzwerk","Zeigt die MAC-Adressen","/v ausführlich, /s für einen Remotecomputer.","getmac /v","PowerShell: Get-NetAdapter"],
+["ftp","Netzwerk","Einfacher FTP-Client","Unverschlüsselt - für Produktivdaten nicht geeignet.","ftp 192.168.1.10",""],
+["curl","Netzwerk","HTTP-Anfragen von der Konsole","Seit Windows 10 1803 ist curl.exe fester Bestandteil von Windows. Achtung: In Windows PowerShell 5.1 ist curl ein Alias für Invoke-WebRequest und ruft gerade nicht das echte curl auf. In PowerShell 7 wurde dieser Alias entfernt, dort landet curl beim echten Programm.","curl -I https://www.microsoft.com","PowerShell: Invoke-WebRequest, Invoke-RestMethod"],
+
+["net user","Benutzer &amp; Gruppen","Verwaltet Benutzerkonten","Ohne Zusatz lokale Konten, mit /domain die AD-Konten. Zeigt Ablaufdatum, letzte Anmeldung und Gruppenmitgliedschaften. Passwörter direkt im Befehl zu setzen landet im Verlauf - im AD lieber PowerShell verwenden.","net user max.mustermann /domain\nnet user azubi Start2026! /add","PowerShell: Get-LocalUser bzw. Get-ADUser"],
+["net localgroup","Benutzer &amp; Gruppen","Verwaltet lokale Gruppen","Der schnellste Weg, ein Domänenkonto zum lokalen Administrator zu machen.","net localgroup Administratoren FIRMA\\it-support /add","PowerShell: Add-LocalGroupMember"],
+["net group","Benutzer &amp; Gruppen","Verwaltet globale Domänengruppen","Läuft nur gegen einen Domänencontroller.","net group \"Vertrieb\" max.mustermann /add /domain","PowerShell: Add-ADGroupMember"],
+["net accounts","Benutzer &amp; Gruppen","Zeigt und setzt Kennwortrichtlinien","/domain zeigt die Domänenrichtlinie - Mindestlänge, Höchstalter, Sperrschwelle.","net accounts /domain","PowerShell: Get-ADDefaultDomainPasswordPolicy"],
+["whoami","Benutzer &amp; Gruppen","Zeigt den angemeldeten Kontext","/groups listet alle Gruppen im Zugriffstoken samt SIDs, /priv die Privilegien, /upn den UPN. Der zuverlässigste Weg zu prüfen, ob eine frische Gruppenmitgliedschaft schon im Token steckt.","whoami /upn\nwhoami /groups","PowerShell: [Security.Principal.WindowsIdentity]::GetCurrent()"],
+["runas","Benutzer &amp; Gruppen","Startet ein Programm als anderer Benutzer","/user im Format DOMAENE\\Benutzer, /netonly nutzt die Anmeldedaten nur für Netzwerkzugriffe.","runas /user:FIRMA\\admin.ms \"mmc dsa.msc\"","PowerShell: Start-Process -Credential"],
+["net use","Benutzer &amp; Gruppen","Verbindet Netzlaufwerke","/persistent:yes stellt die Verbindung nach dem Neustart wieder her, /delete trennt. Ohne Argumente werden alle Verbindungen aufgelistet.","net use Z: \\\\srv01\\daten /persistent:yes\nnet use * /delete /y","PowerShell: New-PSDrive -Persist"],
+["net share","Benutzer &amp; Gruppen","Verwaltet Freigaben","Zeigt auch die administrativen Freigaben C$ und ADMIN$.","net share Daten=D:\\Daten /grant:Jeder,READ","PowerShell: New-SmbShare, Get-SmbShare"],
+["net view","Benutzer &amp; Gruppen","Listet Freigaben eines Rechners","","net view \\\\srv01","PowerShell: Get-SmbShare -CimSession"],
+["net session","Benutzer &amp; Gruppen","Zeigt aktive SMB-Sitzungen zum Server","Zeigt, wer gerade auf Freigaben zugreift - vor einem Neustart wertvoll.","net session","PowerShell: Get-SmbSession"],
+["net start","Benutzer &amp; Gruppen","Listet oder startet Dienste","Ohne Argument eine Liste aller laufenden Dienste.","net start\nnet start Spooler","PowerShell: Start-Service"],
+["net stop","Benutzer &amp; Gruppen","Beendet einen Dienst","","net stop Spooler","PowerShell: Stop-Service"],
+["net time","Benutzer &amp; Gruppen","Zeigt oder synchronisiert die Zeit","In der Domäne ist die Zeit kritisch: Kerberos erlaubt standardmäßig nur 5 Minuten Abweichung.","net time \\\\dc01 /set /y","w32tm /resync ist der modernere Weg"],
+["w32tm","Benutzer &amp; Gruppen","Konfiguriert den Zeitdienst","/query /status zeigt die Zeitquelle, /resync erzwingt den Abgleich. Der PDC-Emulator ist die Zeitwurzel der Domäne.","w32tm /query /status\nw32tm /resync /force","Hängt direkt mit Kerberos zusammen"],
+
+["tasklist","System &amp; Prozesse","Listet laufende Prozesse","/svc zeigt die Dienste je Prozess, /fi filtert, /m listet geladene DLLs. /s greift auf einen Remotecomputer zu.","tasklist /svc\ntasklist /fi \"MEMUSAGE gt 200000\"","PowerShell: Get-Process"],
+["taskkill","System &amp; Prozesse","Beendet Prozesse","/pid nach ID, /im nach Name, /f erzwingt, /t beendet auch Kindprozesse.","taskkill /im notepad.exe /f\ntaskkill /pid 4312 /t /f","PowerShell: Stop-Process"],
+["sc","System &amp; Prozesse","Verwaltet Dienste auf Systemebene","query zeigt den Status, qc die Konfiguration, config ändert den Starttyp, create und delete legen Dienste an oder entfernen sie. Achtung auf das Leerzeichen nach dem Gleichheitszeichen.","sc query Spooler\nsc config Spooler start= disabled","PowerShell: Get-Service, Set-Service"],
+["schtasks","System &amp; Prozesse","Verwaltet geplante Aufgaben","/query /fo list /v zeigt alles im Detail, /create legt an, /run startet sofort. Die klassische Automatisierungsschiene vor PowerShell-Jobs.","schtasks /create /tn \"Backup\" /tr \"C:\\skripte\\bk.cmd\" /sc daily /st 22:00 /ru SYSTEM","PowerShell: Get-ScheduledTask, Register-ScheduledTask"],
+["systeminfo","System &amp; Prozesse","Zeigt eine vollständige Systemübersicht","Enthält Betriebssystemversion, Installationsdatum, Hotfixes, Arbeitsspeicher, Domäne und Anmeldeserver - ideal für die Erstdokumentation eines Rechners.","systeminfo\nsysteminfo | findstr /i \"Domäne Systemstartzeit\"","PowerShell: Get-ComputerInfo"],
+["shutdown","System &amp; Prozesse","Fährt herunter oder startet neu","/r Neustart, /s Herunterfahren, /t Verzögerung, /f erzwingen, /m für Remotecomputer, /a bricht einen laufenden Countdown ab.","shutdown /r /t 60 /c \"Wartung\"\nshutdown /a","PowerShell: Restart-Computer"],
+["driverquery","System &amp; Prozesse","Listet installierte Treiber","/v ausführlich, /si zeigt signierte Treiber.","driverquery /v /fo table","PowerShell: Get-WindowsDriver"],
+["powercfg","System &amp; Prozesse","Verwaltet Energieoptionen","/energy erzeugt einen HTML-Bericht, /batteryreport analysiert den Akku, /a zeigt verfügbare Energiesparzustände.","powercfg /batteryreport /output C:\\akku.html",""],
+["msinfo32","System &amp; Prozesse","Öffnet die grafische Systemübersicht","Startet ein GUI-Fenster, kann aber per /report eine Textdatei erzeugen.","msinfo32 /report C:\\sys.txt",""],
+["wmic","System &amp; Prozesse","Klassische WMI-Abfragen (veraltet)","Wurde von Microsoft als veraltet eingestuft und ist in aktuellen Windows-Versionen nur noch ein optionales Feature. In Prüfungen taucht es noch auf, in der Praxis gehört der Weg über CIM-Cmdlets.","wmic bios get serialnumber\nwmic product get name,version","Nachfolger: Get-CimInstance in PowerShell"],
+["reg","System &amp; Prozesse","Bearbeitet die Registrierung","query liest, add schreibt, delete entfernt, export sichert einen Zweig als .reg-Datei. Vor jeder Änderung exportieren.","reg query \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\" /v ProductName\nreg export HKLM\\SOFTWARE\\Firma C:\\firma.reg","PowerShell: Get-ItemProperty HKLM:\\..."],
+["regedit","System &amp; Prozesse","Öffnet den Registrierungseditor","Mit /s importiert es eine .reg-Datei ohne Rückfrage - gut in Skripten.","regedit /s C:\\einstellungen.reg",""],
+["set","System &amp; Prozesse","Zeigt und setzt Umgebungsvariablen","Gilt nur für die aktuelle Sitzung. set /p liest eine Eingabe ein, set /a rechnet.","set PATH\nset /p name=Name eingeben: ","PowerShell: $env:PATH, Get-ChildItem Env:"],
+["setx","System &amp; Prozesse","Setzt Variablen dauerhaft","Schreibt in die Registrierung. /m für systemweit statt benutzerbezogen. Wirkt erst in neuen Prozessen.","setx JAVA_HOME \"C:\\Java\\jdk\" /m","PowerShell: [Environment]::SetEnvironmentVariable"],
+["assoc","System &amp; Prozesse","Verknüpft Dateiendung mit Dateityp","","assoc .log",""],
+["ftype","System &amp; Prozesse","Legt fest, welches Programm einen Dateityp öffnet","","ftype txtfile=%SystemRoot%\\notepad.exe \"%1\"",""],
+["chkdsk","System &amp; Prozesse","Prüft und repariert Datenträger","/f behebt Fehler, /r sucht zusätzlich fehlerhafte Sektoren und dauert lange. Auf dem Systemlaufwerk läuft die Prüfung erst beim nächsten Neustart.","chkdsk C: /f /r","PowerShell: Repair-Volume"],
+["sfc","System &amp; Prozesse","Prüft geschützte Systemdateien","/scannow ersetzt beschädigte Dateien aus dem Komponentenspeicher. Wenn das scheitert, ist der Speicher selbst defekt - dann folgt DISM.","sfc /scannow","Reihenfolge in der Praxis: DISM, dann sfc"],
+["dism","System &amp; Prozesse","Wartet das Windows-Abbild","/Online /Cleanup-Image /RestoreHealth repariert den Komponentenspeicher, also die Quelle, aus der sfc schöpft.","dism /Online /Cleanup-Image /RestoreHealth","PowerShell: Repair-WindowsImage"],
+["diskpart","System &amp; Prozesse","Partitionierungswerkzeug","Eigene interaktive Shell: list disk, select disk, clean, create partition primary, format, assign. Extrem mächtig und ohne Rückfragen - clean löscht die gesamte Partitionstabelle.","diskpart\nlist disk\nselect disk 1","PowerShell: Get-Disk, New-Partition"],
+["format","System &amp; Prozesse","Formatiert einen Datenträger","/fs wählt das Dateisystem, /q schnell formatieren.","format E: /fs:ntfs /q","PowerShell: Format-Volume"],
+["defrag","System &amp; Prozesse","Defragmentiert oder optimiert","Bei SSDs führt Windows stattdessen TRIM aus.","defrag C: /o","PowerShell: Optimize-Volume"],
+["bcdedit","System &amp; Prozesse","Bearbeitet den Startkonfigurationsspeicher","Ändert Bootmenü, Timeout und Startmodi. Fehler hier können das System nicht mehr starten lassen.","bcdedit /enum\nbcdedit /set {current} safeboot minimal",""],
+["gpupdate","Gruppenrichtlinien","Aktualisiert Gruppenrichtlinien","/force wendet alle Richtlinien neu an statt nur die geänderten. /boot oder /logoff, wenn eine Richtlinie einen Neustart braucht. Standardmäßig aktualisieren Clients alle 90 Minuten plus Zufallsversatz.","gpupdate /force\ngpupdate /target:user /force","PowerShell: Invoke-GPUpdate (auch remote)"],
+["gpresult","Gruppenrichtlinien","Zeigt die angewendeten Richtlinien","/r als Zusammenfassung, /h erzeugt einen lesbaren HTML-Bericht, /scope user oder computer grenzt ein. Der erste Griff, wenn eine Richtlinie nicht wirkt.","gpresult /h C:\\gpo.html /f\ngpresult /r /scope:computer","PowerShell: Get-GPResultantSetOfPolicy"],
+["dcgpofix","Gruppenrichtlinien","Setzt die Standard-GPOs zurück","Stellt Default Domain Policy und Default Domain Controllers Policy wieder her. Nur im Notfall, alle eigenen Einstellungen darin gehen verloren.","dcgpofix /target:both",""],
+["secedit","Gruppenrichtlinien","Analysiert und setzt Sicherheitsrichtlinien","Exportiert die lokale Sicherheitskonfiguration oder wendet eine Vorlage an.","secedit /export /cfg C:\\sec.inf",""],
+["auditpol","Gruppenrichtlinien","Verwaltet die Überwachungsrichtlinie","Steuert, welche Ereignisse protokolliert werden - Grundlage für die Nachvollziehbarkeit von Anmeldungen.","auditpol /get /category:*",""],
+
+["eventvwr","Protokolle","Öffnet die Ereignisanzeige","Die vier Kerne: System, Anwendung, Sicherheit, Setup. In der Domäne kommen die Verzeichnisdienst-Protokolle dazu.","eventvwr","PowerShell: Get-WinEvent"],
+["wevtutil","Protokolle","Verwaltet Ereignisprotokolle von der Konsole","el listet Protokolle, qe fragt Ereignisse ab, epl exportiert, cl leert. Nützlich auf Core-Installationen ohne GUI.","wevtutil qe System /c:20 /rd:true /f:text","PowerShell: Get-WinEvent -FilterHashtable"],
+["certutil","Protokolle","Zertifikatswerkzeug mit Zusatznutzen","Eigentlich für die PKI gedacht, wird aber gern für Prüfsummen genutzt: -hashfile berechnet SHA256.","certutil -hashfile setup.exe SHA256\ncertutil -store My",""],
+["timeout","Batch","Wartet eine definierte Zeit","/nobreak ignoriert Tastendruck. In Batchdateien sauberer als ping-Tricks.","timeout /t 10 /nobreak","PowerShell: Start-Sleep -Seconds 10"],
+["choice","Batch","Fragt eine Auswahl ab","Setzt ERRORLEVEL nach der gewählten Option - so werden Batchdateien interaktiv.","choice /c jn /m \"Fortfahren\"",""],
+["call","Batch","Ruft ein anderes Batchskript auf","Ohne call kehrt die Ausführung nicht in das aufrufende Skript zurück.","call unterskript.cmd",""],
+["goto","Batch","Springt zu einer Sprungmarke","Marken werden mit :name definiert. goto :eof beendet sauber.","goto :ende",""],
+["if","Batch","Bedingte Ausführung","if exist, if errorlevel, if \"%a%\"==\"b\". Mit /i wird Groß-/Kleinschreibung ignoriert.","if exist C:\\datei.txt (echo da) else (echo fehlt)","PowerShell: if/elseif/else mit -eq, -like"],
+["for","Batch","Schleifen über Dateien, Zahlen und Textzeilen","/f zerlegt Textausgaben in Token - damit lassen sich Ausgaben anderer Befehle weiterverarbeiten. /l zählt, /d läuft über Verzeichnisse. In Batchdateien werden Variablen mit %% geschrieben.","for /f \"tokens=1,2 delims=,\" %a in (liste.csv) do @echo %a - %b","PowerShell: foreach / ForEach-Object"],
+["echo","Batch","Gibt Text aus","echo off unterdrückt die Anzeige der Befehle, das @ davor auch die dieser Zeile selbst.","@echo off\necho Fertig","PowerShell: Write-Host, Write-Output"],
+["rem","Batch","Kommentarzeile","Alternative: zwei Doppelpunkte am Zeilenanfang.","rem Dieses Skript sichert Logs","PowerShell: #"],
+["pause","Batch","Wartet auf Tastendruck","","pause","PowerShell: Read-Host"],
+["setlocal","Batch","Begrenzt Variablen auf das Skript","enabledelayedexpansion ist Pflicht, wenn Variablen innerhalb einer Schleife gesetzt und gelesen werden (dann mit !var! statt %var%).","setlocal enabledelayedexpansion",""],
+["start","Batch","Startet ein Programm in einem neuen Fenster","/wait wartet auf das Ende, /b ohne neues Fenster, /min minimiert.","start /wait setup.exe /quiet","PowerShell: Start-Process -Wait"],
+["sort","Batch","Sortiert Textzeilen","/r kehrt die Reihenfolge um.","type liste.txt | sort","PowerShell: Sort-Object"]
+];
+
+var PS_DB = [
+["Get-Command","Erkundung","Findet Befehle","Der Einstiegspunkt in jede unbekannte Umgebung. Mit -Module lässt sich zeigen, was ein bestimmtes Modul mitbringt, mit -Verb oder -Noun das Verb-Substantiv-Schema durchsuchen.","Get-Command -Noun AD*\nGet-Command -Module ActiveDirectory | Measure-Object","CMD-Pendant: help bzw. where"],
+["Get-Help","Erkundung","Zeigt die Hilfe zu einem Befehl","-Examples liefert Beispiele, -Full alles, -Online öffnet die Microsoft-Dokumentation im Browser. Die Hilfe muss einmalig per Update-Help geladen werden.","Get-Help Get-ADUser -Examples\nGet-Help Get-Process -Online","CMD: befehl /?"],
+["Update-Help","Erkundung","Lädt die Hilfedateien herunter","Ohne diesen Schritt zeigt Get-Help nur die Kurzfassung. Braucht Administratorrechte und Internetzugang.","Update-Help -UICulture de-DE -Force",""],
+["Get-Member","Erkundung","Zeigt Eigenschaften und Methoden eines Objekts","Der wichtigste Befehl zum Verstehen der Pipeline: er verrät, welche Eigenschaften ein durchgereichtes Objekt überhaupt hat.","Get-Process | Get-Member\nGet-ADUser max -Properties * | Get-Member","Hat in CMD kein Gegenstück - dort gibt es nur Text"],
+["Get-Module","Erkundung","Zeigt geladene und verfügbare Module","-ListAvailable zeigt alles Installierte. Module werden seit PowerShell 3 automatisch geladen, sobald ein Befehl daraus aufgerufen wird.","Get-Module -ListAvailable ActiveDirectory",""],
+["Import-Module","Erkundung","Lädt ein Modul in die Sitzung","Nötig, wenn der Autoload nicht greift oder ein bestimmter Pfad geladen werden soll.","Import-Module ActiveDirectory",""],
+["Install-Module","Erkundung","Installiert ein Modul aus einem Repository","Standardquelle ist die PowerShell Gallery. -Scope CurrentUser vermeidet Administratorrechte.","Install-Module PSWindowsUpdate -Scope CurrentUser",""],
+["Find-Module","Erkundung","Sucht Module in der Galerie","","Find-Module -Tag ActiveDirectory",""],
+["Get-History","Erkundung","Zeigt den Befehlsverlauf der Sitzung","Invoke-History führt einen Eintrag erneut aus.","Get-History | Select-Object -Last 20","CMD: doskey /history"],
+["$PSVersionTable","Erkundung","Zeigt die PowerShell-Version","Keine Cmdlet, sondern eine automatische Variable. PSVersion 5.1 bedeutet Windows PowerShell, ab 7.x handelt es sich um das plattformübergreifende PowerShell.","$PSVersionTable\n$PSVersionTable.PSVersion","CMD: ver"],
+
+["Get-ChildItem","Dateisystem","Listet Elemente eines Pfades","Arbeitet nicht nur auf Dateien: dank Provider funktioniert derselbe Befehl auch auf der Registrierung, dem Zertifikatsspeicher oder dem AD-Laufwerk. -Recurse steigt in Unterordner ab, -Filter ist schneller als -Include.","Get-ChildItem C:\\Logs -Recurse -Filter *.log\nGet-ChildItem HKLM:\\SOFTWARE\nGet-ChildItem Cert:\\LocalMachine\\My","CMD: dir (Alias dir zeigt auf dieses Cmdlet)"],
+["Set-Location","Dateisystem","Wechselt den Speicherort","Funktioniert ebenfalls über alle Provider hinweg - auch Set-Location AD: ist möglich.","Set-Location D:\\Projekte\nSet-Location HKCU:","CMD: cd"],
+["Get-Content","Dateisystem","Liest eine Datei ein","-Tail zeigt die letzten Zeilen, -Wait verfolgt eine Logdatei live, -TotalCount begrenzt.","Get-Content C:\\Logs\\app.log -Tail 50 -Wait","CMD: type, more"],
+["Set-Content","Dateisystem","Schreibt Inhalt in eine Datei","Überschreibt. Add-Content hängt an, Out-File formatiert wie auf dem Bildschirm.","\"Start: $(Get-Date)\" | Set-Content C:\\log.txt","CMD: echo text > datei"],
+["Copy-Item","Dateisystem","Kopiert Elemente","-Recurse für Bäume, -Force überschreibt schreibgeschützte Ziele.","Copy-Item C:\\Quelle -Destination D:\\Ziel -Recurse","CMD: copy, xcopy"],
+["Move-Item","Dateisystem","Verschiebt Elemente","","Move-Item C:\\alt.txt D:\\neu.txt","CMD: move"],
+["Remove-Item","Dateisystem","Löscht Elemente","-Recurse -Force ist das PowerShell-Äquivalent zu rd /s /q und genauso endgültig. -WhatIf zeigt vorher, was passieren würde.","Remove-Item C:\\Temp\\* -Recurse -Force -WhatIf","CMD: del, rd"],
+["New-Item","Dateisystem","Erstellt Dateien, Ordner oder Registrierungsschlüssel","-ItemType entscheidet: File, Directory, SymbolicLink.","New-Item -Path C:\\Projekt -ItemType Directory","CMD: md, mklink"],
+["Rename-Item","Dateisystem","Benennt um","","Rename-Item a.txt b.txt","CMD: ren"],
+["Test-Path","Dateisystem","Prüft, ob ein Pfad existiert","Gibt True oder False zurück - die Grundlage vieler Skript-Bedingungen.","if (-not (Test-Path C:\\Backup)) { New-Item C:\\Backup -ItemType Directory }","CMD: if exist"],
+["Select-String","Dateisystem","Durchsucht Text nach Mustern","Liefert Objekte mit Dateiname, Zeilennummer und Treffer statt reinem Text - dadurch weiterverarbeitbar.","Select-String -Path C:\\Logs\\*.log -Pattern \"0x8007\" -Context 1,1","CMD: findstr"],
+["Get-Acl","Dateisystem","Liest NTFS-Berechtigungen","In Kombination mit Set-Acl lassen sich Rechte von einem Ordner auf einen anderen übertragen.","(Get-Acl D:\\Daten).Access | Format-Table IdentityReference,FileSystemRights","CMD: icacls"],
+["Set-Acl","Dateisystem","Setzt Berechtigungen","","Get-Acl C:\\Vorlage | Set-Acl -Path D:\\Neu","CMD: icacls /grant"],
+["Compress-Archive","Dateisystem","Erstellt ein ZIP-Archiv","Expand-Archive entpackt wieder.","Compress-Archive -Path C:\\Logs\\* -DestinationPath C:\\logs.zip",""],
+["Get-FileHash","Dateisystem","Berechnet eine Prüfsumme","Standard ist SHA256 - zum Verifizieren heruntergeladener Dateien.","Get-FileHash .\\setup.exe -Algorithm SHA256","CMD: certutil -hashfile"],
+
+["Where-Object","Pipeline","Filtert Objekte","Das Sieb der Pipeline. Kurzschreibweise mit Punkt seit PowerShell 3: Where-Object Status -eq 'Running'. Vergleichsoperatoren sind -eq, -ne, -gt, -lt, -like, -match, -in.","Get-Service | Where-Object {$_.Status -eq 'Stopped' -and $_.StartType -eq 'Automatic'}","CMD: findstr - aber nur auf Textebene"],
+["ForEach-Object","Pipeline","Führt für jedes Objekt Code aus","$_ oder $PSItem steht für das aktuelle Objekt. Alias ist % - in Skripten besser ausschreiben.","Get-ChildItem *.log | ForEach-Object { Write-Host $_.Name $_.Length }","CMD: for /f"],
+["Select-Object","Pipeline","Wählt Eigenschaften oder Objekte aus","-First und -Last begrenzen, -Property wählt Spalten, -ExpandProperty holt den reinen Wert statt eines Objekts, -Unique entfernt Duplikate.","Get-Process | Sort-Object CPU -Descending | Select-Object -First 5 Name,CPU,Id",""],
+["Sort-Object","Pipeline","Sortiert Objekte","-Descending kehrt um, mehrere Eigenschaften sind möglich.","Get-ChildItem | Sort-Object Length -Descending","CMD: sort"],
+["Group-Object","Pipeline","Gruppiert nach einer Eigenschaft","Sehr stark für Auswertungen: wie viele Benutzer je Abteilung, wie viele Ereignisse je Fehlercode.","Get-ADUser -Filter * -Properties Department | Group-Object Department | Sort-Object Count -Descending",""],
+["Measure-Object","Pipeline","Zählt und rechnet","-Sum, -Average, -Maximum, -Minimum über eine Eigenschaft.","Get-ChildItem C:\\Daten -Recurse | Measure-Object Length -Sum",""],
+["Compare-Object","Pipeline","Vergleicht zwei Objektmengen","Zeigt mit Pfeilen an, auf welcher Seite ein Element fehlt - ideal zum Abgleich zweier Gruppenmitgliedschaften.","Compare-Object (Get-Content a.txt) (Get-Content b.txt)","CMD: fc"],
+["Tee-Object","Pipeline","Schreibt in Datei und gibt weiter","Die Pipeline läuft weiter, nebenbei entsteht ein Protokoll.","Get-Process | Tee-Object -FilePath C:\\proc.txt | Where-Object CPU -gt 10",""],
+["Format-Table","Ausgabe","Stellt Objekte als Tabelle dar","-AutoSize passt die Spaltenbreite an, -Wrap bricht um. Format-Cmdlets zerstören die Objektstruktur - sie gehören immer ans Ende der Pipeline.","Get-Service | Format-Table Name,Status -AutoSize",""],
+["Format-List","Ausgabe","Stellt Objekte untereinander dar","Format-List * zeigt wirklich alle Eigenschaften - der schnellste Weg, ein unbekanntes Objekt zu erkunden.","Get-ADUser max -Properties * | Format-List *",""],
+["Out-GridView","Ausgabe","Öffnet eine sortierbare Tabelle","-PassThru gibt die markierten Zeilen an die Pipeline zurück - ein Auswahldialog ohne eine Zeile GUI-Code.","Get-ADUser -Filter * | Out-GridView -PassThru",""],
+["Out-File","Ausgabe","Schreibt die Ausgabe in eine Datei","-Append hängt an, -Encoding steuert die Zeichenkodierung.","Get-Process | Out-File C:\\proc.txt -Encoding utf8","CMD: befehl > datei.txt"],
+["Export-Csv","Ausgabe","Exportiert Objekte als CSV","-NoTypeInformation unterdrückt die Typzeile (in PowerShell 7 Standard), -Delimiter ';' passt zu deutschem Excel, -Encoding UTF8 rettet Umlaute.","Get-ADUser -Filter * -Properties Mail | Select-Object Name,Mail | Export-Csv C:\\user.csv -NoTypeInformation -Delimiter ';' -Encoding UTF8",""],
+["Import-Csv","Ausgabe","Liest eine CSV als Objekte ein","Jede Zeile wird ein Objekt, jede Spaltenüberschrift eine Eigenschaft. Damit werden Massenanlagen im AD zum Dreizeiler.","Import-Csv C:\\neu.csv -Delimiter ';' | ForEach-Object { New-ADUser -Name $_.Name -SamAccountName $_.Kuerzel }",""],
+["ConvertTo-Json","Ausgabe","Wandelt Objekte in JSON","-Depth ist wichtig, sonst werden verschachtelte Objekte abgeschnitten. ConvertFrom-Json geht den Weg zurück.","Get-Service | Select-Object Name,Status | ConvertTo-Json -Depth 3",""],
+["ConvertTo-Html","Ausgabe","Erzeugt eine HTML-Tabelle","Zusammen mit -Head lassen sich fertige Berichte erzeugen.","Get-Service | ConvertTo-Html | Out-File C:\\dienste.html",""],
+["Write-Host","Ausgabe","Schreibt direkt auf den Bildschirm","Umgeht die Pipeline - für reine Benutzerhinweise geeignet, nicht für Rückgabewerte. Write-Output gehört in die Pipeline.","Write-Host \"Fertig\" -ForegroundColor Green","CMD: echo"],
+["Write-Output","Ausgabe","Gibt Objekte an die Pipeline","Der saubere Rückgabeweg aus Funktionen.","Write-Output $ergebnis",""],
+["Write-Verbose","Ausgabe","Ausführliche Meldungen","Erscheint nur mit -Verbose. Der richtige Ort für Zwischenschritte in eigenen Skripten.","Write-Verbose \"Verbinde zu $server\" -Verbose",""],
+
+["Get-Process","System","Listet laufende Prozesse","Liefert echte Objekte mit CPU-Zeit, Arbeitsspeicher und Pfad. -Id und -Name filtern.","Get-Process | Sort-Object WS -Descending | Select-Object -First 10","CMD: tasklist"],
+["Stop-Process","System","Beendet Prozesse","-Force erzwingt, -Name oder -Id wählen aus.","Stop-Process -Name notepad -Force","CMD: taskkill /f"],
+["Start-Process","System","Startet ein Programm","-Verb RunAs startet erhöht, -Wait wartet auf das Ende, -WindowStyle Hidden versteckt.","Start-Process powershell -Verb RunAs","CMD: start, runas"],
+["Get-Service","System","Zeigt Dienste","Status, Starttyp und Abhängigkeiten in einem Objekt. Der Parameter -ComputerName existiert nur in Windows PowerShell 5.1; in PowerShell 7 läuft die Abfrage entfernter Rechner über Invoke-Command.","Get-Service | Where-Object Status -eq 'Stopped'","CMD: net start, sc query"],
+["Set-Service","System","Ändert Dienstkonfiguration","-StartupType Automatic, Manual oder Disabled.","Set-Service Spooler -StartupType Disabled","CMD: sc config"],
+["Restart-Service","System","Startet einen Dienst neu","Start-Service und Stop-Service gibt es ebenfalls einzeln.","Restart-Service Spooler -Force","CMD: net stop + net start"],
+["Get-WinEvent","System","Fragt Ereignisprotokolle ab","Der moderne Nachfolger von Get-EventLog und deutlich schneller, wenn man -FilterHashtable statt Where-Object benutzt. Ereignis-ID 4624 ist eine erfolgreiche Anmeldung, 4625 eine fehlgeschlagene, 4740 eine Kontosperrung.","Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4625; StartTime=(Get-Date).AddDays(-1)}","CMD: wevtutil, eventvwr"],
+["Get-EventLog","System","Klassische Protokollabfrage","Nur für die alten Protokolle und in PowerShell 7 nicht mehr enthalten. In Prüfungen noch präsent.","Get-EventLog -LogName System -Newest 20","Nachfolger: Get-WinEvent"],
+["Get-CimInstance","System","Fragt WMI-/CIM-Klassen ab","Der moderne Ersatz für Get-WmiObject. Nutzt WinRM statt DCOM und liefert Hardware-, BIOS- und Betriebssysteminformationen.","Get-CimInstance Win32_LogicalDisk -Filter \"DriveType=3\" | Select-Object DeviceID,@{n='FreiGB';e={[math]::Round($_.FreeSpace/1GB,1)}}","CMD: wmic (veraltet)"],
+["Get-ComputerInfo","System","Umfassende Systemübersicht","Ein einziges Objekt mit hunderten Eigenschaften - das PowerShell-Gegenstück zu systeminfo.","Get-ComputerInfo | Select-Object CsName,OsName,OsVersion,CsDomain","CMD: systeminfo"],
+["Get-HotFix","System","Listet installierte Updates","","Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 5",""],
+["Restart-Computer","System","Startet Computer neu","-ComputerName auch mehrere gleichzeitig, -Force erzwingt.","Restart-Computer -ComputerName PC01,PC02 -Force","CMD: shutdown /r /m"],
+["Get-LocalUser","System","Zeigt lokale Benutzerkonten","Gehört zum Modul Microsoft.PowerShell.LocalAccounts. New-LocalUser, Set-LocalUser und Add-LocalGroupMember ergänzen es.","Get-LocalUser | Where-Object Enabled -eq $true","CMD: net user"],
+["Add-LocalGroupMember","System","Fügt ein Konto einer lokalen Gruppe hinzu","Der Standardweg, ein Domänenkonto lokal zu berechtigen.","Add-LocalGroupMember -Group Administratoren -Member FIRMA\\it-support","CMD: net localgroup /add"],
+["Get-ScheduledTask","System","Zeigt geplante Aufgaben","Register-ScheduledTask legt neue an, Start-ScheduledTask führt sofort aus.","Get-ScheduledTask | Where-Object State -eq 'Ready'","CMD: schtasks /query"],
+["Get-ItemProperty","System","Liest Registrierungswerte","Die Registrierung ist ein Provider - deshalb greifen dieselben Item-Cmdlets wie im Dateisystem.","Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' | Select-Object ProductName,DisplayVersion","CMD: reg query"],
+["Set-ItemProperty","System","Schreibt Registrierungswerte","New-ItemProperty legt neue Werte an.","Set-ItemProperty 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value C:\\bild.jpg","CMD: reg add"],
+
+["Test-NetConnection","Netzwerk","Prüft Erreichbarkeit und Ports","Vereint ping, telnet und tracert in einem Cmdlet. -Port prüft einen TCP-Port, -TraceRoute verfolgt den Weg, -InformationLevel Detailed zeigt alles.","Test-NetConnection dc01 -Port 389\nTest-NetConnection 8.8.8.8 -TraceRoute","CMD: ping, telnet, tracert"],
+["Test-Connection","Netzwerk","ICMP-Test als Objekt","-Count begrenzt, -Quiet gibt nur True oder False zurück - perfekt für Bedingungen.","if (Test-Connection srv01 -Count 1 -Quiet) { 'erreichbar' }","CMD: ping"],
+["Get-NetIPConfiguration","Netzwerk","Zeigt die IP-Konfiguration","-Detailed liefert DNS-Suffixe und Gateway-Details.","Get-NetIPConfiguration -Detailed","CMD: ipconfig /all"],
+["Get-NetIPAddress","Netzwerk","Listet alle IP-Adressen","New-NetIPAddress setzt eine feste Adresse, Remove-NetIPAddress entfernt sie.","Get-NetIPAddress -AddressFamily IPv4","CMD: netsh interface ip show address"],
+["Set-DnsClientServerAddress","Netzwerk","Setzt die DNS-Server","In einer AD-Umgebung müssen Mitgliedsrechner zwingend auf die internen DNS-Server zeigen, nicht auf öffentliche.","Set-DnsClientServerAddress -InterfaceAlias Ethernet -ServerAddresses 192.168.1.10,192.168.1.11","CMD: netsh interface ip set dns"],
+["Resolve-DnsName","Netzwerk","Fragt DNS ab","-Type SRV findet Domänencontroller, -Server fragt gezielt einen bestimmten Nameserver.","Resolve-DnsName _ldap._tcp.dc._msdcs.firma.local -Type SRV","CMD: nslookup"],
+["Clear-DnsClientCache","Netzwerk","Leert den DNS-Cache","","Clear-DnsClientCache","CMD: ipconfig /flushdns"],
+["Get-NetTCPConnection","Netzwerk","Zeigt TCP-Verbindungen","Enthält den besitzenden Prozess, sodass sich Portkonflikte direkt zuordnen lassen.","Get-NetTCPConnection -State Listen | Sort-Object LocalPort","CMD: netstat -ano"],
+["Get-NetAdapter","Netzwerk","Listet Netzwerkadapter","Enable-NetAdapter und Disable-NetAdapter schalten sie.","Get-NetAdapter | Where-Object Status -eq 'Up'","CMD: getmac, netsh interface show"],
+["New-NetFirewallRule","Netzwerk","Legt eine Firewallregel an","Get-NetFirewallRule zeigt bestehende Regeln.","New-NetFirewallRule -DisplayName 'Web' -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow","CMD: netsh advfirewall firewall add rule"],
+["Get-SmbShare","Netzwerk","Zeigt Freigaben","New-SmbShare legt an, Grant-SmbShareAccess vergibt Freigabeberechtigungen.","Get-SmbShare | Where-Object Name -notlike '*$'","CMD: net share"],
+["New-PSDrive","Netzwerk","Bindet ein Laufwerk ein","-Persist macht die Verbindung im Explorer sichtbar und dauerhaft.","New-PSDrive -Name Z -PSProvider FileSystem -Root \\\\srv01\\daten -Persist","CMD: net use"],
+["Invoke-WebRequest","Netzwerk","Ruft eine Webseite oder Datei ab","-OutFile lädt herunter. Für APIs ist Invoke-RestMethod besser, weil es JSON direkt in Objekte umwandelt.","Invoke-WebRequest https://example.com/f.zip -OutFile C:\\f.zip","CMD: curl"],
+
+["Enter-PSSession","Remoting","Öffnet eine interaktive Remotesitzung","Die Konsole arbeitet danach direkt auf dem Zielrechner. Setzt aktiviertes WinRM voraus (Port 5985 unverschlüsselt, 5986 über HTTPS).","Enter-PSSession -ComputerName srv01 -Credential FIRMA\\admin","Entfernt verwandt mit RDP, aber rein textbasiert"],
+["Invoke-Command","Remoting","Führt Code auf entfernten Rechnern aus","Der Kern der Massenverwaltung: -ComputerName nimmt eine Liste, der Block läuft parallel auf allen Zielen. Variablen von außen kommen per $using: hinein.","Invoke-Command -ComputerName (Get-Content srv.txt) -ScriptBlock { Get-Service Spooler }",""],
+["New-PSSession","Remoting","Erstellt eine wiederverwendbare Verbindung","Spart den Verbindungsaufbau bei mehreren Befehlen hintereinander.","$s = New-PSSession srv01; Invoke-Command -Session $s -ScriptBlock { hostname }",""],
+["Enable-PSRemoting","Remoting","Aktiviert PowerShell-Remoting","Richtet den WinRM-Dienst ein, setzt den Starttyp und legt die Firewallregel an. In der Domäne meist per Gruppenrichtlinie ausgerollt.","Enable-PSRemoting -Force",""],
+["Get-Credential","Remoting","Fragt Anmeldedaten sicher ab","Das Kennwort landet als SecureString im Speicher, nicht im Klartext im Skript.","$cred = Get-Credential FIRMA\\admin.ms",""],
+["Get-ExecutionPolicy","Skripting","Zeigt die Skriptausführungsrichtlinie","Restricted verhindert jedes Skript, RemoteSigned verlangt eine Signatur nur für heruntergeladene Skripte und ist der übliche Kompromiss, Unrestricted erlaubt alles. Die Richtlinie ist ein Schutz vor Versehen, keine echte Sicherheitsgrenze.","Get-ExecutionPolicy -List",""],
+["Set-ExecutionPolicy","Skripting","Setzt die Ausführungsrichtlinie","-Scope CurrentUser vermeidet Administratorrechte und systemweite Wirkung.","Set-ExecutionPolicy RemoteSigned -Scope CurrentUser",""],
+["RemoteSigned","Skripting","Ausführungsrichtlinie: lokal frei, fremd nur signiert","Wert für Set-ExecutionPolicy und der übliche Kompromiss. Lokal erstellte Skripte laufen ohne Signatur, heruntergeladene nur mit gültiger Signatur. Erkannt wird die Herkunft am NTFS-Datenstrom Zone.Identifier, den Windows beim Download anlegt. Standardwert auf Windows Server.","Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser","Fremdes Skript trotzdem freigeben: Unblock-File"],
+["Unrestricted","Skripting","Ausführungsrichtlinie: alles erlaubt","Führt jedes Skript aus; bei heruntergeladenen Dateien erscheint noch eine Rückfrage, die sich dauerhaft abschalten lässt. Voreinstellung auf Linux und macOS, weil es dort keine Herkunftsmarkierung gibt. Auf Windows-Arbeitsplätzen ungeeignet - für einen Test reicht -Scope Process.","Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process","Sicherere Alternative: RemoteSigned oder ein einmaliges -ExecutionPolicy Bypass"],
+["Unblock-File","Skripting","Entfernt die Herkunftsmarkierung einer Datei","Löscht den NTFS-Datenstrom Zone.Identifier. Danach gilt die Datei als lokal und läuft auch unter RemoteSigned. Erst den Inhalt prüfen, dann entsperren.","Unblock-File .\\skript.ps1\nGet-ChildItem C:\\Skripte -Filter *.ps1 -Recurse | Unblock-File","Sichtbar machen: Get-Item datei.ps1 -Stream *"],
+["Start-Transcript","Skripting","Protokolliert die gesamte Sitzung","Schreibt Eingaben und Ausgaben mit - vorbildlich für Änderungen an Produktivsystemen. Stop-Transcript beendet.","Start-Transcript -Path C:\\Protokoll\\$(Get-Date -f yyyyMMdd).txt",""],
+["Start-Sleep","Skripting","Pausiert die Ausführung","-Seconds oder -Milliseconds.","Start-Sleep -Seconds 5","CMD: timeout"],
+["Read-Host","Skripting","Fragt eine Eingabe ab","-AsSecureString für Kennwörter.","$name = Read-Host \"Benutzername\"","CMD: set /p"],
+["Try/Catch","Skripting","Strukturierte Fehlerbehandlung","Fängt nur abbrechende Fehler ab. Mit -ErrorAction Stop lassen sich auch normale Fehler zu abbrechenden machen - sonst läuft der Catch-Block nie an.","try { Get-ADUser xyz -ErrorAction Stop } catch { Write-Warning $_.Exception.Message }","CMD: if errorlevel"],
+["Get-Date","Skripting","Liefert Datum und Uhrzeit als Objekt","-Format für Zeichenketten, AddDays für Zeitrechnung. Grundlage jeder Filterung nach Zeiträumen.","Get-Date -Format 'yyyy-MM-dd HH:mm'\n(Get-Date).AddDays(-90)","CMD: date /t, time /t"],
+["New-Object","Skripting","Erzeugt ein .NET-Objekt","Immer seltener nötig, seit [PSCustomObject]@{} existiert - dennoch in älteren Skripten allgegenwärtig.","New-Object PSObject -Property @{Name='Test'}",""],
+["Set-Alias","Skripting","Definiert einen Kurznamen","Aliase gehören in die Konsole, nicht in Skripte - dort ist der ausgeschriebene Name lesbarer und stabiler.","Set-Alias ll Get-ChildItem","CMD: doskey"]
+];
+
+var AD_DB = [
+["Get-ADUser","Benutzer","Fragt Benutzerkonten ab","Gibt standardmäßig nur zehn Basiseigenschaften zurück. Alles Weitere - Abteilung, Telefonnummer, letzte Anmeldung - muss über -Properties angefordert werden. -Filter erwartet die AD-Filtersyntax in Anführungszeichen, -SearchBase begrenzt auf eine OU, -LDAPFilter erlaubt klassische LDAP-Abfragen.","Get-ADUser -Filter \"Department -eq 'Vertrieb'\" -Properties Department,Mail,LastLogonDate -SearchBase \"OU=Benutzer,DC=firma,DC=local\"","Klassisch: dsquery user, net user /domain"],
+["New-ADUser","Benutzer","Legt ein Benutzerkonto an","Ohne -AccountPassword und -Enabled $true entsteht ein deaktiviertes Konto ohne Kennwort. -Path bestimmt die Ziel-OU, -UserPrincipalName die Anmeldung im Format benutzer@domain.","New-ADUser -Name \"Max Mustermann\" -GivenName Max -Surname Mustermann -SamAccountName m.mustermann -UserPrincipalName m.mustermann@firma.local -Path \"OU=Benutzer,DC=firma,DC=local\" -AccountPassword (Read-Host -AsSecureString) -Enabled $true -ChangePasswordAtLogon $true","Klassisch: dsadd user"],
+["Set-ADUser","Benutzer","Ändert Eigenschaften","-Replace, -Add und -Clear bearbeiten auch Attribute, für die es keinen eigenen Parameter gibt.","Set-ADUser m.mustermann -Department IT -Title Systemadministrator -Manager c.chef","Klassisch: dsmod user"],
+["Remove-ADUser","Benutzer","Löscht ein Konto","Bei aktiviertem AD-Papierkorb ist eine Wiederherstellung möglich - sonst hilft nur das Backup.","Remove-ADUser m.mustermann -Confirm:$false","Klassisch: dsrm"],
+["Enable-ADAccount","Benutzer","Aktiviert ein Konto","Disable-ADAccount ist das Gegenstück - beim Austritt eines Mitarbeiters der erste Schritt, noch vor dem Löschen.","Disable-ADAccount -Identity m.mustermann",""],
+["Unlock-ADAccount","Benutzer","Hebt eine Kontosperrung auf","Der häufigste Helpdesk-Vorgang überhaupt. Gesperrt wird durch zu viele Fehlversuche, entsperrt wird hiermit - das Kennwort bleibt unverändert.","Unlock-ADAccount -Identity m.mustermann",""],
+["Set-ADAccountPassword","Benutzer","Setzt das Kennwort zurück","-Reset überschreibt ohne Kenntnis des alten Kennworts. Danach meist Set-ADUser -ChangePasswordAtLogon $true.","Set-ADAccountPassword m.mustermann -Reset -NewPassword (Read-Host -AsSecureString)","Klassisch: net user /domain *"],
+["Search-ADAccount","Benutzer","Findet Konten nach Zustand","-LockedOut, -AccountDisabled, -AccountInactive mit -TimeSpan. Der schnellste Weg zu verwaisten Konten - ein Klassiker in Audits.","Search-ADAccount -AccountInactive -TimeSpan 90.00:00:00 -UsersOnly | Select-Object Name,LastLogonDate",""],
+["Get-ADPrincipalGroupMembership","Benutzer","Zeigt die Gruppen eines Kontos","Zeigt die direkten Mitgliedschaften. Die primäre Gruppe (meist Domänen-Benutzer) taucht dabei gesondert auf.","Get-ADPrincipalGroupMembership m.mustermann | Select-Object Name","Klassisch: whoami /groups auf dem Client"],
+
+["Get-ADGroup","Gruppen","Fragt Gruppen ab","GroupScope unterscheidet DomainLocal, Global und Universal. GroupCategory trennt Sicherheits- von Verteilergruppen.","Get-ADGroup -Filter \"GroupScope -eq 'Global'\" -Properties Description","Klassisch: dsquery group"],
+["New-ADGroup","Gruppen","Erstellt eine Gruppe","-GroupScope und -GroupCategory sind Pflicht. Für Berechtigungen immer Security, nicht Distribution.","New-ADGroup -Name \"FS-Vertrieb-RW\" -GroupScope DomainLocal -GroupCategory Security -Path \"OU=Gruppen,DC=firma,DC=local\"","Klassisch: dsadd group"],
+["Add-ADGroupMember","Gruppen","Fügt Mitglieder hinzu","Nimmt auch ein Array entgegen. Nach der Änderung muss sich der Benutzer neu anmelden, damit das Kerberos-Ticket die neue Gruppe enthält.","Add-ADGroupMember \"G-Vertrieb\" -Members m.mustermann,a.meier","Klassisch: net group /add"],
+["Remove-ADGroupMember","Gruppen","Entfernt Mitglieder","","Remove-ADGroupMember \"G-Vertrieb\" -Members m.mustermann -Confirm:$false",""],
+["Get-ADGroupMember","Gruppen","Listet die Mitglieder","-Recursive löst verschachtelte Gruppen auf und zeigt die tatsächlich berechtigten Benutzer - genau das braucht man bei Berechtigungsprüfungen.","Get-ADGroupMember \"FS-Vertrieb-RW\" -Recursive | Select-Object Name,objectClass","Klassisch: net group /domain"],
+
+["Get-ADComputer","Computer","Fragt Computerkonten ab","OperatingSystem und LastLogonDate verraten veraltete oder verwaiste Rechner.","Get-ADComputer -Filter * -Properties OperatingSystem,LastLogonDate | Sort-Object LastLogonDate","Klassisch: dsquery computer"],
+["New-ADComputer","Computer","Legt ein Computerkonto vor","Sinnvoll bei vorbereiteten Bereitstellungen, damit das Konto schon in der richtigen OU liegt und die passenden GPOs greifen.","New-ADComputer -Name PC-042 -Path \"OU=Clients,DC=firma,DC=local\"",""],
+["Add-Computer","Computer","Nimmt einen Rechner in die Domäne auf","-OUPath legt die Ziel-OU fest, -Restart startet direkt neu.","Add-Computer -DomainName firma.local -OUPath \"OU=Clients,DC=firma,DC=local\" -Credential (Get-Credential) -Restart","Klassisch: netdom join"],
+["Test-ComputerSecureChannel","Computer","Prüft den Vertrauenskanal zur Domäne","Gibt False zurück, wenn das Computerkonto-Kennwort nicht mehr passt. -Repair setzt ihn zurück, ohne den Rechner neu aufzunehmen.","Test-ComputerSecureChannel -Repair -Credential (Get-Credential)","Klassisch: nltest /sc_verify"],
+["Reset-ComputerMachinePassword","Computer","Erneuert das Computerkonto-Kennwort","","Reset-ComputerMachinePassword -Server dc01",""],
+
+["Get-ADOrganizationalUnit","Struktur","Fragt Organisationseinheiten ab","OUs sind die Container, an denen Gruppenrichtlinien und Delegierungen hängen - der eigentliche Aufbau der Verzeichnisstruktur.","Get-ADOrganizationalUnit -Filter * | Select-Object Name,DistinguishedName",""],
+["New-ADOrganizationalUnit","Struktur","Erstellt eine OU","-ProtectedFromAccidentalDeletion ist standardmäßig aktiv und muss vor dem Löschen erst abgeschaltet werden.","New-ADOrganizationalUnit -Name Vertrieb -Path \"OU=Abteilungen,DC=firma,DC=local\"",""],
+["Move-ADObject","Struktur","Verschiebt Objekte zwischen OUs","Nach dem Verschieben gelten andere Gruppenrichtlinien - deshalb ist die OU-Struktur eine Design-Entscheidung, keine Ordnerablage.","Move-ADObject \"CN=Max Mustermann,OU=Neu,DC=firma,DC=local\" -TargetPath \"OU=Vertrieb,DC=firma,DC=local\"","Klassisch: dsmove"],
+["Get-ADObject","Struktur","Universelle Abfrage über alle Objekttypen","Der Allzweckbefehl, wenn der Objekttyp unbekannt ist oder gelöschte Objekte gesucht werden.","Get-ADObject -Filter \"ObjectClass -eq 'contact'\"",""],
+["Get-ADDomain","Struktur","Zeigt Informationen zur Domäne","Enthält die Betriebsmasterrollen der Domänenebene, die Funktionsebene und die wichtigsten Container.","Get-ADDomain | Select-Object DNSRoot,DomainMode,PDCEmulator,RIDMaster,InfrastructureMaster",""],
+["Get-ADForest","Struktur","Zeigt Informationen zur Gesamtstruktur","Enthält Schemamaster, Domänennamenmaster, alle Domänen und globalen Kataloge.","Get-ADForest | Select-Object Name,ForestMode,SchemaMaster,DomainNamingMaster,GlobalCatalogs",""],
+["Get-ADDomainController","Struktur","Listet Domänencontroller","-Discover findet den nächstgelegenen DC, -Filter * zeigt alle mit Standort und Rollen.","Get-ADDomainController -Filter * | Select-Object Name,Site,IPv4Address,IsGlobalCatalog","Klassisch: nltest /dclist"],
+["Get-ADReplicationPartnerMetadata","Struktur","Zeigt den Replikationsstatus","Die PowerShell-Variante der repadmin-Auswertung.","Get-ADReplicationPartnerMetadata -Target dc01 | Select-Object Partner,LastReplicationSuccess","Klassisch: repadmin /showrepl"],
+["Install-ADDSForest","Struktur","Errichtet eine neue Gesamtstruktur","Der erste Domänencontroller überhaupt. Vorher muss die Rolle per Install-WindowsFeature AD-Domain-Services installiert sein. Test-ADDSForestInstallation prüft die Voraussetzungen vorab.","Install-ADDSForest -DomainName firma.local -DomainNetbiosName FIRMA -InstallDns","Klassisch: dcpromo (entfällt seit Server 2012)"],
+["Install-ADDSDomainController","Struktur","Fügt einen weiteren DC hinzu","Zweiter DC gehört zum Standard: fällt der einzige aus, steht die Anmeldung im gesamten Netz.","Install-ADDSDomainController -DomainName firma.local -InstallDns -Credential (Get-Credential)",""],
+["Move-ADDirectoryServerOperationMasterRole","Struktur","Überträgt FSMO-Rollen","Ohne -Force wird sauber übertragen (beide DCs online), mit -Force erzwungen (seize) - Letzteres nur, wenn der alte Rolleninhaber endgültig verloren ist.","Move-ADDirectoryServerOperationMasterRole -Identity dc02 -OperationMasterRole PDCEmulator,RIDMaster","Klassisch: ntdsutil roles"],
+
+["Get-GPO","Gruppenrichtlinien","Zeigt Gruppenrichtlinienobjekte","-All listet alle GPOs der Domäne samt Erstell- und Änderungsdatum.","Get-GPO -All | Select-Object DisplayName,ModificationTime",""],
+["New-GPO","Gruppenrichtlinien","Erstellt ein neues GPO","Ein neues GPO wirkt erst, wenn es mit New-GPLink an eine OU, Domäne oder einen Standort verknüpft wird.","New-GPO -Name \"Laufwerke Vertrieb\" | New-GPLink -Target \"OU=Vertrieb,DC=firma,DC=local\"",""],
+["Get-GPResultantSetOfPolicy","Gruppenrichtlinien","Erzeugt einen RSoP-Bericht","Zeigt, welche Richtlinien tatsächlich auf einem Benutzer oder Rechner landen - inklusive der Frage, welches GPO gewonnen hat.","Get-GPResultantSetOfPolicy -User FIRMA\\m.mustermann -Computer PC-042 -ReportType Html -Path C:\\rsop.html","Klassisch: gpresult /h"],
+["Invoke-GPUpdate","Gruppenrichtlinien","Aktualisiert Richtlinien auch remote","Lässt sich mit Get-ADComputer verketten, um ein ganzes Netz in einem Rutsch zu aktualisieren.","Get-ADComputer -Filter * | ForEach-Object { Invoke-GPUpdate -Computer $_.Name -Force }","Klassisch: gpupdate /force (nur lokal)"],
+["Backup-GPO","Gruppenrichtlinien","Sichert GPOs","Restore-GPO spielt zurück - die einzige eingebaute Versionierung für Gruppenrichtlinien.","Backup-GPO -All -Path C:\\GPO-Backup",""],
+
+["dsquery","Klassische Werkzeuge","Sucht Objekte im Verzeichnis","Liefert Distinguished Names, die per Pipe an dsget oder dsmod weitergegeben werden. Läuft auch dort, wo das PowerShell-Modul fehlt.","dsquery user -name \"Max*\" -limit 0\ndsquery computer -inactive 12","PowerShell: Get-ADUser, Get-ADComputer"],
+["dsget","Klassische Werkzeuge","Liest Eigenschaften eines Objekts","Nimmt den DN aus dsquery entgegen.","dsquery user -name \"Max*\" | dsget user -samid -email","PowerShell: Get-ADUser -Properties"],
+["dsadd","Klassische Werkzeuge","Legt Objekte an","","dsadd user \"CN=Max Mustermann,OU=Benutzer,DC=firma,DC=local\" -samid m.mustermann -pwd *","PowerShell: New-ADUser"],
+["dsmod","Klassische Werkzeuge","Ändert Objekte","","dsmod user \"CN=Max,OU=Benutzer,DC=firma,DC=local\" -dept IT","PowerShell: Set-ADUser"],
+["dsrm","Klassische Werkzeuge","Löscht Objekte","-subtree löscht mitsamt Inhalt.","dsrm \"OU=Alt,DC=firma,DC=local\" -subtree","PowerShell: Remove-ADObject"],
+["dcdiag","Klassische Werkzeuge","Prüft die Gesundheit eines Domänencontrollers","Führt Dutzende Einzeltests aus: DNS, Replikation, Dienste, SYSVOL-Freigabe, Netlogon. /test:dns ist der häufigste Einstieg.","dcdiag /v /c /e\ndcdiag /test:dns /dnsbasic",""],
+["repadmin","Klassische Werkzeuge","Diagnostiziert die Replikation","/replsummary gibt den Überblick, /showrepl die Details je Partner, /syncall erzwingt einen Abgleich. Replikationsfehler sind die häufigste Ursache für unterschiedliche Kennwörter auf verschiedenen DCs.","repadmin /replsummary\nrepadmin /showrepl dc02","PowerShell: Get-ADReplicationPartnerMetadata"],
+["nltest","Klassische Werkzeuge","Prüft Vertrauensstellungen und DC-Kontakt","/dsgetdc: zeigt den verwendeten DC, /sc_verify: prüft den sicheren Kanal, /domain_trusts listet Vertrauensstellungen.","nltest /dsgetdc:firma.local\nnltest /sc_verify:firma.local","PowerShell: Test-ComputerSecureChannel"],
+["netdom","Klassische Werkzeuge","Verwaltet Domänenbeitritt und Vertrauensstellungen","join nimmt einen Rechner auf, query fsmo zeigt die Rolleninhaber, resetpwd setzt das Computerkonto-Kennwort zurück.","netdom query fsmo\nnetdom join PC01 /domain:firma.local /userd:admin /passwordd:*","PowerShell: Add-Computer, Get-ADDomain"],
+["ntdsutil","Klassische Werkzeuge","Wartungswerkzeug für die AD-Datenbank","Verwaltet FSMO-Rollen, bereinigt Metadaten ausgefallener DCs und setzt das Kennwort des Wiederherstellungsmodus. Mächtig und gefährlich - nur mit klarer Anleitung nutzen.","ntdsutil\nroles\nconnections",""],
+["klist","Klassische Werkzeuge","Zeigt und löscht Kerberos-Tickets","purge verwirft alle Tickets, sodass beim nächsten Zugriff ein neues mit aktuellen Gruppen ausgestellt wird - hilft, wenn eine frische Gruppenmitgliedschaft nicht greift.","klist\nklist purge",""],
+["setspn","Klassische Werkzeuge","Verwaltet Dienstprinzipalnamen","-L listet, -X findet Duplikate. Doppelte SPNs führen zu Kerberos-Fehlern bei Dienstanmeldungen.","setspn -L srv-sql\nsetspn -X",""],
+["csvde","Klassische Werkzeuge","Importiert und exportiert im CSV-Format","Kann nur anlegen, nicht ändern - und keine Kennwörter setzen.","csvde -f export.csv -d \"OU=Benutzer,DC=firma,DC=local\"","PowerShell: Import-Csv + New-ADUser"],
+["ldifde","Klassische Werkzeuge","Import und Export im LDIF-Format","Kann im Gegensatz zu csvde auch ändern und löschen.","ldifde -f export.ldf -d \"DC=firma,DC=local\"",""],
+["adsiedit.msc","Klassische Werkzeuge","Direkter Editor für Verzeichnisattribute","Zeigt das Verzeichnis ohne Schutzmechanismen - jede Änderung wirkt sofort auf die Datenbank. Nur mit klarem Auftrag verwenden.","adsiedit.msc",""],
+["dsa.msc","Klassische Werkzeuge","Active Directory-Benutzer und -Computer","Die klassische Verwaltungskonsole. Erweiterte Features einblenden, um alle Attribute und den Reiter Attribut-Editor zu sehen.","dsa.msc",""],
+["gpmc.msc","Klassische Werkzeuge","Gruppenrichtlinienverwaltung","Zeigt Verknüpfungen, Vererbung, Sicherheitsfilterung und die Ergebnisse der Richtlinienmodellierung.","gpmc.msc",""],
+["dssite.msc","Klassische Werkzeuge","Standorte und Dienste","Hier werden Subnetze Standorten zugeordnet - das steuert, welchen DC ein Client anspricht und wie oft zwischen Standorten repliziert wird.","dssite.msc",""]
+];
+
+/* =====================================================================
+   KAPITEL
+   ===================================================================== */
+
+var CHAPTERS = [
+
+{id:"start", grp:"Einstieg", nav:"Landkarte", title:"Drei Werkzeuge, eine Windows-Welt",
+lede:"CMD, PowerShell und Active Directory werden oft in einem Atemzug genannt, sind aber drei völlig verschiedene Dinge: ein Interpreter, eine Automatisierungsumgebung und ein Verzeichnisdienst.",
+html:`
+<p>Bevor irgendein Befehl Sinn ergibt, muss die Rollenverteilung sitzen. Wer sie einmal sauber trennt, verwechselt danach nie wieder eine Shell mit einem Dienst.</p>
+
+<div class="tblwrap"><table>
+<tr><th></th><th>Was es ist</th><th>Womit es arbeitet</th><th>Typischer Einsatz</th></tr>
+<tr><td><strong>CMD</strong><br><code>cmd.exe</code></td><td>Befehlsinterpreter seit Windows NT, Nachfolger von COMMAND.COM</td><td>Text: jede Ausgabe ist eine Zeichenkette</td><td>Schnelle Einzelbefehle, Batchdateien, Anmeldeskripte, Notfallkonsole in WinRE</td></tr>
+<tr><td><strong>PowerShell</strong><br><code>powershell.exe</code> / <code>pwsh.exe</code></td><td>Shell <em>und</em> Skriptsprache auf .NET-Basis</td><td>Objekte: jede Ausgabe hat Eigenschaften und Methoden</td><td>Automatisierung, Massenänderungen, Auswertungen, Verwaltung aus der Ferne</td></tr>
+<tr><td><strong>Active Directory</strong><br><code>NTDS.dit</code> auf einem DC</td><td>Verzeichnisdienst, also eine verteilte Datenbank plus Authentifizierung</td><td>Objekte im Verzeichnis: Benutzer, Gruppen, Computer, Richtlinien</td><td>Zentrale Anmeldung, Berechtigungen, Gruppenrichtlinien in Firmennetzen</td></tr>
+</table></div>
+
+<div class="note"><b>Der entscheidende Unterschied</b>CMD und PowerShell sind <em>Werkzeuge</em>, mit denen du etwas bedienst. Active Directory ist das <em>Etwas</em>, das bedient wird. Es läuft auf einem Server, nicht in deiner Konsole. Beide Shells können mit ihm sprechen - nur auf verschiedenen Wegen.</div>
+
+<h3>Wo die Programme tatsächlich liegen</h3>
+<p>Das ist kein Detailwissen für Sammler: Es erklärt, warum drei verschiedene blaue oder schwarze Fenster auf demselben Rechner existieren können.</p>
+<div class="tblwrap"><table>
+<tr><th>Programm</th><th>Pfad</th><th>Version</th></tr>
+<tr><td>cmd.exe</td><td><code>%SystemRoot%\\System32\\cmd.exe</code></td><td>Teil von Windows, keine eigene Versionspflege</td></tr>
+<tr><td>powershell.exe</td><td><code>%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\</code></td><td>Windows PowerShell 5.1, fest im Betriebssystem, erhält nur noch Sicherheitsupdates</td></tr>
+<tr><td>pwsh.exe</td><td><code>%ProgramFiles%\\PowerShell\\7\\</code></td><td>PowerShell 7.x, plattformübergreifend, separat installiert, läuft parallel zu 5.1</td></tr>
+</table></div>
+<p>Windows PowerShell 5.1 und PowerShell 7 sind <strong>keine</strong> konkurrierenden Installationen - sie existieren absichtlich nebeneinander. Der Grund ist Kompatibilität: Manche älteren Module laufen nur unter 5.1 auf dem .NET Framework.</p>
+
+<x-term data-k="ps">
+# Welche Version läuft hier gerade?
+$PSVersionTable.PSVersion
+
+# Wo liegt die ausführbare Datei?
+(Get-Process -Id $PID).Path
+</x-term>
+
+<h3>Ein Befehl, drei Wege</h3>
+<p>Die Aufgabe: Alle gestoppten Dienste anzeigen, die eigentlich automatisch starten sollten.</p>
+<x-term data-k="cmd">
+:: CMD - nur Text, Filtern ist Zeichenkettensuche
+sc query state= all | findstr /i "STOPPED"
+</x-term>
+<x-term data-k="ps">
+# PowerShell - Objekte mit echten Eigenschaften
+Get-Service | Where-Object {$_.Status -eq 'Stopped' -and $_.StartType -eq 'Automatic'}
+</x-term>
+<p>Der CMD-Weg findet das Wort STOPPED irgendwo im Text und weiß nichts vom Starttyp - dafür gibt es dort schlicht keine Eigenschaft. Der PowerShell-Weg fragt zwei tatsächliche Merkmale des Objekts ab. Das ist der ganze Unterschied zwischen Text und Objekt, an einem einzigen Beispiel.</p>
+
+<div class="note warn"><b>Nicht verwechseln</b>Die Windows-Konsolenanwendung, in der alles läuft, ist wieder etwas anderes: früher <code>conhost.exe</code>, heute meist Windows Terminal. Das ist nur das Fenster - CMD, PowerShell und pwsh sind die Programme darin.</div>
+`},
+
+{id:"zusammenhang", grp:"Einstieg", nav:"Zusammenhänge", title:"Wie die drei zusammenarbeiten",
+lede:"Die spannenden Fragen liegen nicht in den Einzelbefehlen, sondern an den Übergängen: Was ruft was auf, welches Protokoll läuft darunter, und warum liefern zwei Wege zum selben Ziel manchmal unterschiedliche Ergebnisse.",
+html:`
+<h3>Die Schichten von unten nach oben</h3>
+<div class="card">
+<pre style="font-family:var(--mono);font-size:.78rem;line-height:1.75;margin:0;overflow-x:auto;color:#cfe7ef">
+ DU
+  |
+  +-- cmd.exe ----------------+          +-- powershell.exe / pwsh.exe
+  |   startet .exe-Programme  |          |   lädt Module mit Cmdlets
+  |   und Batchdateien        |          |   und kann ebenfalls .exe starten
+  |                           |          |
+  v                           v          v
+ net.exe  dsquery.exe  ping.exe      ActiveDirectory-Modul
+  |            |                          |
+  | SMB/RPC    | LDAP 389                 | ADWS 9389
+  v            v                          v
+ +---------------------------------------------------+
+ |        DOMÄNENCONTROLLER (Windows Server)          |
+ |   AD DS  ->  NTDS.dit  +  SYSVOL  +  DNS  + KDC    |
+ +---------------------------------------------------+
+</pre>
+</div>
+
+<p>Drei Beobachtungen daraus, die in Prüfungen und in der Praxis immer wieder auftauchen:</p>
+<ul>
+<li><strong>PowerShell ersetzt CMD nicht, es umfasst es.</strong> Jedes <code>.exe</code>-Werkzeug aus der CMD-Welt lässt sich aus PowerShell heraus aufrufen - <code>ipconfig</code>, <code>robocopy</code>, <code>dsquery</code> funktionieren dort genauso. Umgekehrt geht es nicht: CMD kennt keine Cmdlets.</li>
+<li><strong>Der Zugriffsweg aufs AD unterscheidet sich.</strong> Die klassischen Werkzeuge sprechen LDAP auf Port 389 oder RPC. Das PowerShell-Modul <code>ActiveDirectory</code> spricht dagegen mit den <em>Active Directory Web Services</em> auf TCP 9389. Ist dieser Dienst auf dem DC gestoppt oder der Port gesperrt, scheitert <code>Get-ADUser</code>, während <code>dsquery user</code> weiterhin funktioniert. Genau dieser Fall verwirrt im Störungsfall am meisten.</li>
+<li><strong>Beide Wege ändern dieselbe Datenbank.</strong> Ob du einen Benutzer in der grafischen Konsole, per <code>dsadd</code> oder per <code>New-ADUser</code> anlegst - am Ende landet ein Objekt in derselben <code>NTDS.dit</code> und wird an alle anderen Domänencontroller repliziert.</li>
+</ul>
+
+<h3>Dieselbe Aufgabe in drei Sprachen</h3>
+<div class="tblwrap"><table>
+<tr><th>Aufgabe</th><th>CMD</th><th>PowerShell</th></tr>
+<tr><td>Benutzer im AD suchen</td><td><code>net user max /domain</code><br><code>dsquery user -name "Max*"</code></td><td><code>Get-ADUser max -Properties *</code></td></tr>
+<tr><td>Gruppenmitglied hinzufügen</td><td><code>net group "Vertrieb" max /add /domain</code></td><td><code>Add-ADGroupMember Vertrieb -Members max</code></td></tr>
+<tr><td>Konto entsperren</td><td>nur über die GUI oder <code>net user max /active:yes</code> (nicht identisch!)</td><td><code>Unlock-ADAccount max</code></td></tr>
+<tr><td>Richtlinien aktualisieren</td><td><code>gpupdate /force</code> (nur lokal)</td><td><code>Invoke-GPUpdate -Computer PC01 -Force</code> (auch entfernt)</td></tr>
+<tr><td>Richtlinienbericht</td><td><code>gpresult /h bericht.html</code></td><td><code>Get-GPResultantSetOfPolicy -ReportType Html</code></td></tr>
+<tr><td>Dienste prüfen</td><td><code>sc query</code> / <code>net start</code></td><td><code>Get-Service</code></td></tr>
+<tr><td>Port testen</td><td><code>telnet dc01 389</code></td><td><code>Test-NetConnection dc01 -Port 389</code></td></tr>
+<tr><td>DC finden</td><td><code>nltest /dsgetdc:firma.local</code></td><td><code>Get-ADDomainController -Discover</code></td></tr>
+</table></div>
+
+<div class="note"><b>Warum es die alten Werkzeuge noch gibt</b>Sie sind auf jedem Windows vorhanden, auch ohne nachinstallierte Verwaltungswerkzeuge, und sie laufen in Umgebungen ohne PowerShell-Remoting. Auf einem frisch aufgesetzten Client ohne RSAT ist <code>net user /domain</code> unter Umständen der einzige Weg, überhaupt etwas über ein Konto zu erfahren.</div>
+
+<h3>Die Brücke: Textausgaben in PowerShell weiterverarbeiten</h3>
+<p>Ein <code>.exe</code>-Werkzeug liefert an PowerShell nur Zeichenketten, keine Objekte. Damit die Pipeline trotzdem funktioniert, muss der Text zerlegt werden.</p>
+<x-term data-k="ps">
+# ipconfig liefert Text - PowerShell filtert ihn wie CMD es täte
+ipconfig /all | Select-String "DNS-Server"
+
+# Besser: das native Cmdlet nutzen und echte Objekte bekommen
+Get-DnsClientServerAddress -AddressFamily IPv4 |
+    Select-Object InterfaceAlias, ServerAddresses
+</x-term>
+<p>Die Faustregel lautet: Wenn es ein Cmdlet gibt, nimm das Cmdlet. Externe Werkzeuge nur dort, wo kein Cmdlet existiert - und dann bewusst mit der Einschränkung leben, dass die Ausgabe reiner Text ist.</p>
+
+<h3>Der Lebenszyklus eines Mitarbeiterkontos durch alle drei Schichten</h3>
+<div class="tblwrap"><table>
+<tr><th>Schritt</th><th>Passiert im AD</th><th>Spürbar auf dem Client</th></tr>
+<tr><td>Konto angelegt</td><td>Objekt in einer OU, SID vergeben, Kennwort gesetzt</td><td>Anmeldung möglich, sobald die Replikation durch ist</td></tr>
+<tr><td>Gruppe zugewiesen</td><td>Eintrag im Attribut <code>member</code> der Gruppe</td><td>Wirkt erst nach neuer Anmeldung - das Kerberos-Ticket enthält die Gruppen</td></tr>
+<tr><td>GPO verknüpft</td><td>Verknüpfung an der OU, Dateien im SYSVOL</td><td><code>gpupdate /force</code> oder nächster Aktualisierungszyklus (90 Minuten plus Versatz)</td></tr>
+<tr><td>Laufwerk verbunden</td><td>GPO-Einstellung oder Anmeldeskript</td><td><code>net use</code> zeigt die Verbindung</td></tr>
+<tr><td>Konto deaktiviert</td><td><code>userAccountControl</code> geändert</td><td>Anmeldung schlägt fehl, bestehende Sitzung läuft weiter bis zum Ticketablauf</td></tr>
+</table></div>
+<p>Die dritte Spalte enthält die Erklärung für den häufigsten Helpdesk-Satz überhaupt: <em>Ich habe die Gruppe doch eben hinzugefügt, warum kommt er nicht auf das Laufwerk?</em> Weil das Zugriffstoken bei der Anmeldung gebaut wird und die neue Gruppe darin schlicht noch nicht steht.</p>
+<x-term data-k="cmd">
+:: Prüfen, was tatsächlich im Token steckt
+whoami /groups
+
+:: Kerberos-Tickets verwerfen, damit neue ausgestellt werden
+klist purge
+</x-term>
+`},
+
+{id:"cmd-basis", grp:"Eingabeaufforderung", nav:"CMD verstehen", title:"Die Eingabeaufforderung",
+lede:"cmd.exe ist alt, simpel und begrenzt - und genau deshalb überall verfügbar und in Notfällen unersetzlich.",
+html:`
+<h3>Interne und externe Befehle</h3>
+<p>Ein Teil der Befehle steckt direkt in <code>cmd.exe</code> - <code>dir</code>, <code>cd</code>, <code>copy</code>, <code>echo</code>, <code>set</code>, <code>if</code>, <code>for</code>. Sie existieren nicht als eigene Datei auf der Platte. Alles andere sind eigenständige Programme in <code>System32</code>: <code>ping.exe</code>, <code>ipconfig.exe</code>, <code>robocopy.exe</code>, <code>net.exe</code>.</p>
+<x-term data-k="cmd">
+:: Interne Befehle auflisten
+help
+
+:: Zeigt nichts - dir ist kein eigenes Programm
+where dir
+
+:: Zeigt den Pfad - ping schon
+where ping
+</x-term>
+<p>Diese Unterscheidung ist der Grund dafür, dass <code>help</code> nur eine kurze Liste ausgibt, während die offizielle Windows-Befehlsreferenz über 250 Einträge umfasst. Die Referenz zählt beides zusammen.</p>
+
+<h3>Umgebungsvariablen</h3>
+<p>Variablen werden in Prozentzeichen eingeschlossen. Sie gelten nur für die aktuelle Sitzung und alle davon gestarteten Prozesse - deshalb kennt ein bereits geöffnetes Fenster eine neu gesetzte Variable nicht.</p>
+<div class="tblwrap"><table>
+<tr><th>Variable</th><th>Inhalt</th></tr>
+<tr><td><code>%USERNAME%</code></td><td>Angemeldeter Benutzer</td></tr>
+<tr><td><code>%USERDOMAIN%</code></td><td>Domäne oder Computername bei lokaler Anmeldung</td></tr>
+<tr><td><code>%COMPUTERNAME%</code></td><td>Name des Rechners</td></tr>
+<tr><td><code>%USERPROFILE%</code></td><td>Profilordner, meist C:\\Users\\name</td></tr>
+<tr><td><code>%APPDATA%</code> / <code>%LOCALAPPDATA%</code></td><td>Anwendungsdaten, roaming bzw. lokal</td></tr>
+<tr><td><code>%SystemRoot%</code> / <code>%WINDIR%</code></td><td>Windows-Verzeichnis</td></tr>
+<tr><td><code>%PATH%</code></td><td>Suchpfade für ausführbare Dateien</td></tr>
+<tr><td><code>%TEMP%</code></td><td>Temporärer Ordner</td></tr>
+<tr><td><code>%LOGONSERVER%</code></td><td>Domänencontroller, der die Anmeldung bearbeitet hat</td></tr>
+<tr><td><code>%ERRORLEVEL%</code></td><td>Rückgabewert des letzten Befehls, 0 heißt Erfolg</td></tr>
+</table></div>
+<x-term data-k="cmd">
+echo %USERDOMAIN%\\%USERNAME% an %COMPUTERNAME%
+echo Anmeldeserver: %LOGONSERVER%
+
+:: Nur für diese Sitzung
+set PROJEKT=Migration2026
+
+:: Dauerhaft in der Registrierung, wirkt erst in neuen Prozessen
+setx PROJEKT "Migration2026"
+</x-term>
+<div class="note warn"><b>ERRORLEVEL richtig lesen</b><code>if errorlevel 1</code> bedeutet <em>größer oder gleich 1</em>, nicht <em>gleich 1</em>. Wer exakt vergleichen will, schreibt <code>if "%ERRORLEVEL%"=="1"</code>. Bei robocopy ist außerdem alles unter 8 ein Erfolg - eine 1 heißt dort nur, dass Dateien kopiert wurden.</div>
+
+<h3>Groß- und Kleinschreibung, Pfade, Anführungszeichen</h3>
+<ul>
+<li>CMD unterscheidet <strong>nicht</strong> zwischen Groß- und Kleinschreibung, weder bei Befehlen noch bei Dateinamen.</li>
+<li>Pfade mit Leerzeichen gehören in doppelte Anführungszeichen: <code>cd "C:\\Program Files"</code>.</li>
+<li>Der Backslash trennt Verzeichnisse, der Schrägstrich leitet Optionen ein - umgekehrt als unter Linux.</li>
+<li><code>.</code> ist das aktuelle, <code>..</code> das übergeordnete Verzeichnis.</li>
+</ul>
+
+<h3>Warum CMD in der Praxis überlebt</h3>
+<ul>
+<li><strong>Wiederherstellungsumgebung:</strong> In WinRE, bei <code>bootrec</code>, <code>diskpart</code> oder <code>bcdedit</code> gibt es oft nur eine Eingabeaufforderung.</li>
+<li><strong>Anmeldeskripte:</strong> Unzählige gewachsene <code>.cmd</code>-Dateien laufen noch in produktiven Netzen.</li>
+<li><strong>Keine Ausführungsrichtlinie:</strong> Batchdateien starten ohne die Hürde der PowerShell-ExecutionPolicy.</li>
+<li><strong>Geschwindigkeit:</strong> Für einen einzelnen <code>ipconfig</code> braucht niemand eine Laufzeitumgebung.</li>
+</ul>
+`},
+
+{id:"cmd-syntax", grp:"Eingabeaufforderung", nav:"Operatoren &amp; Batch", title:"Umleitung, Verkettung und Batchdateien",
+lede:"Hier wird aus einzelnen Befehlen ein Ablauf. Die Operatoren sind wenige, aber sie tauchen in jedem Skript und jeder Prüfung wieder auf.",
+html:`
+<h3>Umleitungsoperatoren</h3>
+<div class="tblwrap"><table>
+<tr><th>Operator</th><th>Wirkung</th><th>Beispiel</th></tr>
+<tr><td><code>&gt;</code></td><td>Ausgabe in Datei, überschreibt</td><td><code>dir &gt; liste.txt</code></td></tr>
+<tr><td><code>&gt;&gt;</code></td><td>Ausgabe anhängen</td><td><code>echo Ende &gt;&gt; log.txt</code></td></tr>
+<tr><td><code>&lt;</code></td><td>Eingabe aus Datei lesen</td><td><code>sort &lt; unsortiert.txt</code></td></tr>
+<tr><td><code>2&gt;</code></td><td>Nur Fehlerausgabe umleiten</td><td><code>befehl 2&gt; fehler.txt</code></td></tr>
+<tr><td><code>2&gt;&amp;1</code></td><td>Fehler in die normale Ausgabe mischen</td><td><code>befehl &gt; alles.txt 2&gt;&amp;1</code></td></tr>
+<tr><td><code>2&gt;nul</code></td><td>Fehlermeldungen verwerfen</td><td><code>del *.tmp 2&gt;nul</code></td></tr>
+<tr><td><code>|</code></td><td>Ausgabe als Eingabe weitergeben</td><td><code>tasklist | findstr chrome</code></td></tr>
+</table></div>
+<div class="note"><b>Wichtig für das Verständnis der Pipe</b>In CMD fließt durch die Pipe reiner Text. In PowerShell fließen Objekte. Derselbe senkrechte Strich, zwei völlig verschiedene Konzepte - das ist die meistgestellte Verständnisfrage beim Umstieg.</div>
+
+<h3>Verkettungsoperatoren</h3>
+<div class="tblwrap"><table>
+<tr><th>Operator</th><th>Bedeutung</th></tr>
+<tr><td><code>&amp;</code></td><td>Nacheinander ausführen, unabhängig vom Ergebnis</td></tr>
+<tr><td><code>&amp;&amp;</code></td><td>Zweiten Befehl nur bei Erfolg (ERRORLEVEL 0) ausführen</td></tr>
+<tr><td><code>||</code></td><td>Zweiten Befehl nur bei Fehler ausführen</td></tr>
+<tr><td><code>^</code></td><td>Sonderzeichen entwerten oder Zeile umbrechen</td></tr>
+</table></div>
+<x-term data-k="cmd">
+:: Ordner nur anlegen, wenn der Wechsel scheitert
+cd C:\\Backup || md C:\\Backup
+
+:: Kopieren und nur bei Erfolg protokollieren
+copy quelle.txt ziel.txt &amp;&amp; echo OK &gt;&gt; log.txt
+</x-term>
+
+<h3>Eine Batchdatei mit Substanz</h3>
+<p>Die Endung ist <code>.cmd</code> oder <code>.bat</code> - funktional praktisch identisch, <code>.cmd</code> ist die neuere Variante. Innerhalb einer Batchdatei werden Schleifenvariablen mit doppeltem Prozentzeichen geschrieben.</p>
+<x-term data-k="cmd">
+@echo off
+setlocal enabledelayedexpansion
+title Log-Archivierung
+
+set QUELLE=C:\\Logs
+set ZIEL=D:\\Archiv\\%DATE:~-4%-%DATE:~3,2%
+
+if not exist "%ZIEL%" md "%ZIEL%"
+
+for %%F in ("%QUELLE%\\*.log") do (
+    echo Verarbeite %%~nxF
+    copy "%%F" "%ZIEL%\\" &gt;nul
+    if errorlevel 1 (
+        echo FEHLER bei %%~nxF &gt;&gt; "%ZIEL%\\fehler.txt"
+    )
+)
+
+echo Fertig: %DATE% %TIME%
+endlocal
+</x-term>
+<p>Die Tilden-Modifizierer bei <code>%%~nxF</code> sind eine Eigenheit, die man einmal gesehen haben muss: <code>~n</code> liefert den Dateinamen ohne Endung, <code>~x</code> die Endung, <code>~dp</code> Laufwerk und Pfad, <code>~f</code> den vollständigen Pfad.</p>
+
+<h3>for /f - das schärfste Werkzeug in CMD</h3>
+<p>Damit lassen sich Textausgaben anderer Programme zerlegen. Das ist der Ersatz für alles, was PowerShell mit Objekten erledigt.</p>
+<x-term data-k="cmd">
+:: Jede Zeile einer Datei, aufgeteilt am Semikolon
+for /f "usebackq tokens=1,2 delims=;" %%A in ("benutzer.csv") do (
+    echo Konto: %%A   Abteilung: %%B
+)
+
+:: Ausgabe eines Befehls zerlegen, Kopfzeile überspringen
+for /f "skip=1 tokens=2" %%S in ('sc query Spooler ^| findstr STATE') do echo Status: %%S
+</x-term>
+<div class="note warn"><b>Verzögerte Erweiterung</b>Innerhalb von Klammerblöcken wird <code>%var%</code> <em>einmal beim Einlesen</em> ersetzt, nicht bei jedem Durchlauf. Wer Variablen in einer Schleife setzt und liest, braucht <code>setlocal enabledelayedexpansion</code> und schreibt dann <code>!var!</code>. Ohne diese Zeile scheitern unzählige Batchskripte auf immer dieselbe Art.</div>
+`}
+];
+
+CHAPTERS.push(
+
+{id:"ps-basis", grp:"PowerShell", nav:"Grundlagen", title:"PowerShell verstehen",
+lede:"PowerShell wirkt zunächst geschwätzig - bis klar wird, dass die langen Namen ein System haben, das man erraten kann statt auswendig zu lernen.",
+html:`
+<h3>Verb-Substantiv: das ganze Namenssystem</h3>
+<p>Jedes Cmdlet heißt <code>Verb-Substantiv</code>, immer im Singular. Das Verb stammt aus einer festen, von Microsoft gepflegten Liste. Wer das Schema kennt, rät neue Befehle richtig.</p>
+<div class="tblwrap"><table>
+<tr><th>Verb</th><th>Bedeutung</th><th>Beispiel</th></tr>
+<tr><td><code>Get</code></td><td>Abfragen, ändert nichts</td><td>Get-Service, Get-ADUser</td></tr>
+<tr><td><code>Set</code></td><td>Bestehendes ändern</td><td>Set-ADUser, Set-Service</td></tr>
+<tr><td><code>New</code></td><td>Neu erzeugen</td><td>New-ADUser, New-Item</td></tr>
+<tr><td><code>Remove</code></td><td>Löschen</td><td>Remove-Item, Remove-ADGroupMember</td></tr>
+<tr><td><code>Add</code></td><td>Zu etwas Bestehendem hinzufügen</td><td>Add-ADGroupMember</td></tr>
+<tr><td><code>Start</code> / <code>Stop</code></td><td>Starten und anhalten</td><td>Start-Service, Stop-Process</td></tr>
+<tr><td><code>Test</code></td><td>Prüfen, liefert meist True/False</td><td>Test-Path, Test-NetConnection</td></tr>
+<tr><td><code>Invoke</code></td><td>Etwas ausführen lassen</td><td>Invoke-Command, Invoke-WebRequest</td></tr>
+<tr><td><code>Export</code> / <code>Import</code></td><td>In ein Format schreiben und zurücklesen</td><td>Export-Csv, Import-Csv</td></tr>
+<tr><td><code>Enable</code> / <code>Disable</code></td><td>Aktivieren, deaktivieren</td><td>Enable-ADAccount</td></tr>
+</table></div>
+<x-term data-k="ps">
+# Alle genehmigten Verben ansehen
+Get-Verb | Sort-Object Verb
+
+# Was gibt es rund um Netzwerkadapter?
+Get-Command -Noun NetAdapter*
+</x-term>
+
+<h3>Die drei Befehle, mit denen man alles selbst herausfindet</h3>
+<x-term data-k="ps">
+Get-Command -Module ActiveDirectory   # Was kann dieses Modul?
+Get-Help New-ADUser -Examples         # Wie sieht ein Aufruf aus?
+Get-ADUser max -Properties * | Get-Member   # Welche Eigenschaften hat das Ergebnis?
+</x-term>
+<p>Diese Dreierkette ersetzt das Auswendiglernen. <code>Get-Member</code> ist dabei der unterschätzte Teil: Es zeigt, woran die Pipeline im nächsten Schritt überhaupt andocken kann.</p>
+
+<h3>Aliase: bequem in der Konsole, schädlich im Skript</h3>
+<div class="tblwrap"><table>
+<tr><th>Alias</th><th>Eigentliches Cmdlet</th><th>Herkunft</th></tr>
+<tr><td><code>dir</code>, <code>ls</code>, <code>gci</code></td><td>Get-ChildItem</td><td>CMD, Unix, PowerShell-Kurzform</td></tr>
+<tr><td><code>cd</code>, <code>sl</code></td><td>Set-Location</td><td>CMD</td></tr>
+<tr><td><code>cat</code>, <code>type</code>, <code>gc</code></td><td>Get-Content</td><td>Unix, CMD</td></tr>
+<tr><td><code>cp</code>, <code>copy</code></td><td>Copy-Item</td><td>Unix, CMD</td></tr>
+<tr><td><code>rm</code>, <code>del</code></td><td>Remove-Item</td><td>Unix, CMD</td></tr>
+<tr><td><code>?</code>, <code>where</code></td><td>Where-Object</td><td>PowerShell</td></tr>
+<tr><td><code>%</code>, <code>foreach</code></td><td>ForEach-Object</td><td>PowerShell</td></tr>
+<tr><td><code>select</code></td><td>Select-Object</td><td>PowerShell</td></tr>
+<tr><td><code>ft</code>, <code>fl</code></td><td>Format-Table, Format-List</td><td>PowerShell</td></tr>
+</table></div>
+<div class="note warn"><b>Falle beim Umstieg</b>Die Aliase sehen aus wie die alten Befehle, verhalten sich aber anders. <code>ls -l</code> scheitert, weil Get-ChildItem keinen Parameter <code>-l</code> kennt. Und <code>where</code> ist in PowerShell Where-Object, in CMD dagegen where.exe zum Finden von Programmen - dieselbe Eingabe, zwei verschiedene Dinge.</div>
+
+<h3>Provider: dasselbe Cmdlet für ganz verschiedene Datenquellen</h3>
+<p>PowerShell behandelt Registrierung, Zertifikatsspeicher, Umgebungsvariablen und sogar das Active Directory wie ein Dateisystem. Deshalb funktionieren <code>Get-ChildItem</code> und <code>Set-Location</code> überall gleich.</p>
+<x-term data-k="ps">
+Get-PSDrive                       # Alle verfügbaren Laufwerke, auch virtuelle
+
+Get-ChildItem Env:                # Umgebungsvariablen
+Get-ChildItem HKLM:\\SOFTWARE      # Registrierung
+Get-ChildItem Cert:\\LocalMachine\\My   # Zertifikate
+Set-Location AD:                  # Verzeichnis, wenn das AD-Modul geladen ist
+</x-term>
+
+<h3>Operatoren, die man täglich braucht</h3>
+<div class="tblwrap"><table>
+<tr><th>Operator</th><th>Bedeutung</th><th>Beispiel</th></tr>
+<tr><td><code>-eq</code> / <code>-ne</code></td><td>gleich / ungleich</td><td><code>$_.Status -eq 'Running'</code></td></tr>
+<tr><td><code>-gt</code> <code>-ge</code> <code>-lt</code> <code>-le</code></td><td>größer, kleiner mit Gleich-Varianten</td><td><code>$_.Length -gt 1MB</code></td></tr>
+<tr><td><code>-like</code> / <code>-notlike</code></td><td>Platzhaltervergleich mit * und ?</td><td><code>$_.Name -like 'srv*'</code></td></tr>
+<tr><td><code>-match</code></td><td>Regulärer Ausdruck</td><td><code>$_.Name -match '^PC-\\d{3}$'</code></td></tr>
+<tr><td><code>-contains</code> / <code>-in</code></td><td>Prüft Listenmitgliedschaft</td><td><code>'IT' -in $abteilungen</code></td></tr>
+<tr><td><code>-and</code> <code>-or</code> <code>-not</code></td><td>Logische Verknüpfung</td><td><code>A -and -not B</code></td></tr>
+</table></div>
+<p>Größenangaben versteht PowerShell direkt: <code>1KB</code>, <code>1MB</code>, <code>1GB</code>, <code>1TB</code> werden automatisch in Bytes umgerechnet. Das spart in Filterausdrücken viel Rechnerei.</p>
+`},
+
+{id:"ps-pipeline", grp:"PowerShell", nav:"Pipeline &amp; Objekte", title:"Die Pipeline",
+lede:"Der eine Gedanke, der PowerShell von jeder anderen Shell unterscheidet: Durch die Pipe fließt kein Text, sondern strukturierte Objekte.",
+html:`
+<h3>Was in der Pipe passiert</h3>
+<div class="card">
+<pre style="font-family:var(--mono);font-size:.8rem;line-height:1.8;margin:0;overflow-x:auto;color:#cfe7ef">
+Get-ADUser -Filter *   |   Where-Object ...   |   Select-Object ...   |   Export-Csv
+      |                        |                       |                     |
+  liefert Objekte          filtert sie            wählt Spalten         schreibt Datei
+  mit Eigenschaften        anhand echter          und benennt um
+  (Name, Enabled, ...)     Werte
+</pre>
+</div>
+<p>Jede Stufe bekommt vollständige Objekte, keine abgeschnittenen Bildschirmzeilen. Deshalb geht in der Mitte nichts verloren - anders als bei CMD, wo nach dem ersten <code>findstr</code> nur noch die getroffene Textzeile übrig ist.</p>
+
+<h3>Die sieben Arbeitspferde</h3>
+<x-term data-k="ps">
+Get-Service |
+    Where-Object   { $_.Status -eq 'Stopped' } |   # filtern
+    Sort-Object    DisplayName |                   # sortieren
+    Select-Object  Name, DisplayName, StartType |  # Spalten wählen
+    Export-Csv     C:\\dienste.csv -NoTypeInformation -Delimiter ';' -Encoding UTF8
+</x-term>
+<ul>
+<li><strong>Where-Object</strong> filtert. Kurzform ohne Klammern seit Version 3: <code>Where-Object Status -eq 'Stopped'</code>.</li>
+<li><strong>Select-Object</strong> wählt Eigenschaften oder begrenzt mit <code>-First</code> und <code>-Last</code>.</li>
+<li><strong>Sort-Object</strong> sortiert, <code>-Descending</code> kehrt um.</li>
+<li><strong>Group-Object</strong> gruppiert und zählt - die Basis jeder Auswertung.</li>
+<li><strong>Measure-Object</strong> rechnet Summen, Durchschnitte, Maxima.</li>
+<li><strong>ForEach-Object</strong> führt für jedes Objekt Code aus, Platzhalter ist <code>$_</code>.</li>
+<li><strong>Export-Csv</strong> schreibt das Ergebnis weg - für den Chef, das Ticket oder die Doku.</li>
+</ul>
+
+<h3>Berechnete Eigenschaften</h3>
+<p>Wenn eine Spalte so nicht existiert, wird sie in <code>Select-Object</code> erzeugt. Die Kurzschreibweise <code>n</code> steht für Name, <code>e</code> für Expression.</p>
+<x-term data-k="ps">
+Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" |
+    Select-Object DeviceID,
+        @{n='GrößeGB'; e={[math]::Round($_.Size/1GB,1)}},
+        @{n='FreiGB';  e={[math]::Round($_.FreeSpace/1GB,1)}},
+        @{n='Frei%';   e={[math]::Round($_.FreeSpace/$_.Size*100,0)}}
+</x-term>
+
+<h3>Filtern links, nicht rechts</h3>
+<p>Eine Regel, die bei großen Verzeichnissen den Unterschied zwischen Sekunden und Minuten ausmacht: Filter gehören in den Befehl selbst, nicht erst in ein nachgelagertes <code>Where-Object</code>.</p>
+<x-term data-k="ps">
+# Langsam: der DC liefert alle Konten, PowerShell wirft danach weg
+Get-ADUser -Filter * -Properties Department | Where-Object Department -eq 'IT'
+
+# Schnell: der DC filtert selbst und schickt nur die Treffer
+Get-ADUser -Filter "Department -eq 'IT'" -Properties Department
+</x-term>
+
+<h3>Formatieren kommt immer zum Schluss</h3>
+<div class="note stop"><b>Häufiger Fehler</b>Nach einem <code>Format-Table</code> sind es keine echten Objekte mehr, sondern Formatierungsanweisungen. Ein anschließendes <code>Export-Csv</code> liefert deshalb unbrauchbaren Inhalt. Merksatz: Format-Cmdlets nur ganz am Ende und nie vor einem Export.</div>
+
+<h3>Die Ausgabe verlässt PowerShell</h3>
+<div class="tblwrap"><table>
+<tr><th>Ziel</th><th>Cmdlet</th><th>Wofür</th></tr>
+<tr><td>Bildschirm, tabellarisch</td><td><code>Format-Table -AutoSize</code></td><td>Schneller Blick</td></tr>
+<tr><td>Bildschirm, alle Felder</td><td><code>Format-List *</code></td><td>Ein Objekt vollständig erkunden</td></tr>
+<tr><td>Sortierbares Fenster</td><td><code>Out-GridView -PassThru</code></td><td>Auswahl durch den Anwender</td></tr>
+<tr><td>Tabellenkalkulation</td><td><code>Export-Csv -Delimiter ';'</code></td><td>Auswertung, Übergabe</td></tr>
+<tr><td>Bericht</td><td><code>ConvertTo-Html</code></td><td>Dokumentation, Ticketanhang</td></tr>
+<tr><td>Zwischenablage</td><td><code>Set-Clipboard</code></td><td>Schnelles Einfügen ins Ticket</td></tr>
+</table></div>
+`},
+
+{id:"ps-skript", grp:"PowerShell", nav:"Skripte &amp; Remoting", title:"Skripte, Fehler und entfernte Rechner",
+lede:"Ab hier wird aus der Konsole Automatisierung: eigene Dateien, kontrollierte Fehler und Befehle, die auf hundert Rechnern gleichzeitig laufen.",
+html:`
+<h3>Ausführungsrichtlinie</h3>
+<p>Eine <code>.ps1</code>-Datei startet nicht per Doppelklick, sondern unterliegt der ExecutionPolicy. Sie ist ein Schutz vor Versehen, keine Sicherheitsgrenze - wer ein Skript ausführen will, kann sie immer umgehen.</p>
+<div class="tblwrap"><table>
+<tr><th>Einstellung</th><th>Lokal erstelltes Skript</th><th>Heruntergeladenes Skript</th><th>Einsatz</th></tr>
+<tr><td><code>Restricted</code></td><td>blockiert</td><td>blockiert</td><td>Standard auf Windows-Clients. Einzelne Befehle gehen, Skriptdateien nicht.</td></tr>
+<tr><td><code>AllSigned</code></td><td>nur signiert</td><td>nur signiert</td><td>Hohe Sicherheit, aber jedes eigene Skript braucht ein Codesignaturzertifikat.</td></tr>
+<tr><td><code>RemoteSigned</code></td><td>läuft</td><td>nur signiert</td><td>Der übliche Kompromiss und Standard auf Windows Server.</td></tr>
+<tr><td><code>Unrestricted</code></td><td>läuft</td><td>läuft nach Rückfrage</td><td>Standard auf Linux und macOS. Auf Windows nur in abgeschotteten Testumgebungen sinnvoll.</td></tr>
+<tr><td><code>Bypass</code></td><td>läuft</td><td>läuft</td><td>Keine Prüfung, keine Warnung. Gedacht für einzelne Aufrufe aus anderen Programmen heraus.</td></tr>
+<tr><td><code>Undefined</code></td><td colspan="2">keine eigene Festlegung</td><td>Der nächstniedrigere Bereich entscheidet. Sind alle undefiniert, gilt Restricted.</td></tr>
+</table></div>
+
+<h4>RemoteSigned im Detail</h4>
+<p>Die Unterscheidung zwischen lokal und heruntergeladen ist keine Magie. Beim Download aus dem Internet legt Windows an der Datei einen zusätzlichen NTFS-Datenstrom namens <code>Zone.Identifier</code> an. Darin steht die Herkunftszone: 3 für Internet, 4 für nicht vertrauenswürdige Quellen. Genau daran erkennt RemoteSigned ein fremdes Skript.</p>
+<x-term data-k="ps">
+# Herkunftsmarkierung sichtbar machen
+Get-Item .\\skript.ps1 -Stream *
+Get-Content .\\skript.ps1 -Stream Zone.Identifier
+
+# Markierung entfernen, damit das Skript unter RemoteSigned läuft
+Unblock-File .\\skript.ps1
+
+# Ganzen Ordner freigeben
+Get-ChildItem C:\\Skripte -Filter *.ps1 -Recurse | Unblock-File
+</x-term>
+<p>Damit wird auch klar, warum ein Skript aus einer E-Mail oder einem heruntergeladenen ZIP-Archiv scheitert, während dieselbe Datei nach dem Kopieren über eine Netzwerkfreigabe anstandslos läuft: Der Datenstrom wandert nicht überall mit. Wichtig ist, dass <code>Unblock-File</code> eine bewusste Entscheidung ist - erst den Inhalt lesen, dann entsperren.</p>
+
+<h4>Unrestricted im Detail</h4>
+<p>Unrestricted führt alles aus. Bei Dateien mit Herkunftsmarkierung erscheint noch eine Rückfrage, die sich mit <em>Immer ausführen</em> dauerhaft abschalten lässt - danach gibt es keine Hürde mehr. Auf Linux und macOS ist Unrestricted die Voreinstellung, weil es dort keine Zonen-Datenströme und damit keine sinnvolle Unterscheidung gibt.</p>
+<div class="note stop"><b>Warum Unrestricted auf Windows-Arbeitsplätzen nichts zu suchen hat</b>Der Unterschied zu RemoteSigned ist genau der Schutz, der zählt: Ein per Mail hereingereichtes Skript läuft unter RemoteSigned nicht, unter Unrestricted nach einem einzigen Klick. Wer nur ein eigenes Skript testen will, braucht dafür kein Unrestricted - dafür gibt es <code>-Scope Process</code> oder den einmaligen Aufruf mit <code>-ExecutionPolicy Bypass</code>.</div>
+
+<h4>Die Bereiche und ihre Rangfolge</h4>
+<p>Es gibt nicht eine Richtlinie, sondern fünf - und sie gewinnen von oben nach unten. Deshalb kann <code>Set-ExecutionPolicy</code> scheinbar wirkungslos bleiben: Eine Gruppenrichtlinie steht darüber.</p>
+<div class="tblwrap"><table>
+<tr><th>Rang</th><th>Bereich</th><th>Gilt für</th></tr>
+<tr><td>1</td><td><code>MachinePolicy</code></td><td>Per Gruppenrichtlinie für den Computer gesetzt - schlägt alles darunter</td></tr>
+<tr><td>2</td><td><code>UserPolicy</code></td><td>Per Gruppenrichtlinie für den Benutzer gesetzt</td></tr>
+<tr><td>3</td><td><code>Process</code></td><td>Nur diese eine Sitzung, verschwindet beim Schließen</td></tr>
+<tr><td>4</td><td><code>CurrentUser</code></td><td>Registrierung unter HKCU, keine Administratorrechte nötig</td></tr>
+<tr><td>5</td><td><code>LocalMachine</code></td><td>Registrierung unter HKLM, gilt für alle Benutzer, erfordert Administratorrechte</td></tr>
+</table></div>
+<x-term data-k="ps">
+# Alle fünf Bereiche auf einen Blick - hier steht, wer gerade gewinnt
+Get-ExecutionPolicy -List
+
+# Der übliche Weg: nur für den eigenen Benutzer, ohne Adminrechte
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Nur für diese eine Konsole, wirkt sofort und ist beim Schließen wieder weg
+Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process
+
+# Eine eigene Festlegung wieder entfernen
+Set-ExecutionPolicy -ExecutionPolicy Undefined -Scope CurrentUser
+</x-term>
+<div class="note warn"><b>Wenn Set-ExecutionPolicy nichts bewirkt</b>Zeigt <code>Get-ExecutionPolicy -List</code> bei <code>MachinePolicy</code> oder <code>UserPolicy</code> einen anderen Wert als Undefined, kommt die Vorgabe aus einer Gruppenrichtlinie. Sie steht unter <em>Computerkonfiguration, Administrative Vorlagen, Windows-Komponenten, Windows PowerShell</em> und lässt sich lokal nicht überschreiben. In der Domäne ist das der Normalfall und beabsichtigt.</div>
+<div class="note"><b>Windows PowerShell und PowerShell 7 zählen getrennt</b>Beide führen eigene Einstellungen in der Registrierung. Eine in <code>powershell.exe</code> gesetzte Richtlinie gilt nicht automatisch in <code>pwsh.exe</code> - ein Fehler, der beim Umstieg regelmäßig Zeit kostet.</div>
+<x-term data-k="ps">
+Get-ExecutionPolicy -List
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Einmalig für einen Aufruf, ohne dauerhafte Änderung
+powershell.exe -ExecutionPolicy Bypass -File C:\\skripte\\wartung.ps1
+</x-term>
+
+<h3>Ein Skript mit Parametern</h3>
+<x-term data-k="ps">
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)][string]$Abteilung,
+    [string]$Ausgabe = "C:\\Berichte\\bericht.csv"
+)
+
+Import-Module ActiveDirectory
+
+try {
+    $benutzer = Get-ADUser -Filter "Department -eq '$Abteilung'" -Properties Department, Mail, LastLogonDate -ErrorAction Stop
+
+    if (-not $benutzer) {
+        Write-Warning "Keine Konten in Abteilung $Abteilung gefunden."
+        return
+    }
+
+    $benutzer |
+        Select-Object Name, SamAccountName, Mail, LastLogonDate |
+        Export-Csv $Ausgabe -NoTypeInformation -Delimiter ';' -Encoding UTF8
+
+    Write-Host "$($benutzer.Count) Konten nach $Ausgabe geschrieben." -ForegroundColor Green
+}
+catch {
+    Write-Error "Abfrage fehlgeschlagen: $($_.Exception.Message)"
+}
+</x-term>
+<p>Drei Dinge daran sind wichtiger als der Rest: <code>[CmdletBinding()]</code> schaltet <code>-Verbose</code> und <code>-WhatIf</code> frei, <code>Mandatory</code> erzwingt eine Eingabe, und lange Befehle lassen sich nach einem Pipe-Zeichen oder einem Komma umbrechen - oder mit einem Gravis-Zeichen am Zeilenende, das aber als fehleranfällig gilt.</p>
+
+<h3>Fehlerbehandlung</h3>
+<div class="note warn"><b>Der Stolperstein</b><code>try/catch</code> fängt nur <em>abbrechende</em> Fehler. Die meisten Cmdlets erzeugen aber nicht abbrechende Fehler und laufen einfach weiter - der Catch-Block wird dann nie erreicht. Deshalb gehört an jeden kritischen Aufruf <code>-ErrorAction Stop</code>.</div>
+<div class="tblwrap"><table>
+<tr><th>Wert für -ErrorAction</th><th>Verhalten</th></tr>
+<tr><td><code>Continue</code></td><td>Fehler anzeigen, weiterlaufen (Standard)</td></tr>
+<tr><td><code>SilentlyContinue</code></td><td>Fehler unterdrücken, weiterlaufen</td></tr>
+<tr><td><code>Stop</code></td><td>Abbrechen - macht try/catch erst wirksam</td></tr>
+<tr><td><code>Inquire</code></td><td>Nachfragen</td></tr>
+</table></div>
+<x-term data-k="ps">
+# Testlauf vor der echten Änderung
+Get-ADUser -Filter "Enabled -eq $false" | Remove-ADUser -WhatIf
+
+# Einzelbestätigung erzwingen
+Remove-ADUser m.mustermann -Confirm
+</x-term>
+<p><code>-WhatIf</code> ist die wichtigste Angewohnheit überhaupt: Es zeigt, was passieren <em>würde</em>, ohne etwas zu tun. Vor jedem Massenlöschen gehört es in die Zeile.</p>
+
+<h3>Remoting: ein Befehl, viele Rechner</h3>
+<p>PowerShell-Remoting nutzt WinRM über HTTP auf Port 5985 oder HTTPS auf 5986. In der Domäne wird es meist per Gruppenrichtlinie aktiviert und über Kerberos authentifiziert.</p>
+<x-term data-k="ps">
+# Einmalig auf dem Ziel aktivieren
+Enable-PSRemoting -Force
+
+# Interaktiv auf einem Server arbeiten
+Enter-PSSession -ComputerName srv01
+
+# Denselben Befehl auf vielen Rechnern parallel ausführen
+Invoke-Command -ComputerName (Get-Content C:\\server.txt) -ScriptBlock {
+    Get-Service Spooler | Select-Object @{n='Host';e={$env:COMPUTERNAME}}, Status
+}
+
+# Eine lokale Variable in den entfernten Block mitgeben
+$dienst = 'Spooler'
+Invoke-Command -ComputerName srv01 -ScriptBlock { Get-Service $using:dienst }
+</x-term>
+<div class="note"><b>Der Vergleich zu CMD</b>Für entfernte Rechner bot die Eingabeaufforderung nur Einzelwerkzeuge mit <code>/s</code>-Parameter wie <code>tasklist /s</code> oder <code>sc \\\\server</code>. Ein allgemeines Verfahren, beliebigen Code auf beliebigen Rechnern auszuführen, gab es nicht. Genau das ist Remoting - und der Hauptgrund, warum in Firmennetzen kein Weg an PowerShell vorbeiführt.</div>
+
+<h3>Nachvollziehbarkeit</h3>
+<x-term data-k="ps">
+Start-Transcript -Path "C:\\Protokoll\\$(Get-Date -f yyyyMMdd-HHmm).txt"
+# ... Arbeit ...
+Stop-Transcript
+</x-term>
+<p>Bei Änderungen an Produktivsystemen ist ein Mitschnitt kein Luxus, sondern die Grundlage dafür, im Zweifel belegen zu können, was gemacht wurde.</p>
+`}
+
+);
+
+CHAPTERS.push(
+
+{id:"ad-basis", grp:"Active Directory", nav:"Aufbau", title:"Was Active Directory eigentlich ist",
+lede:"Ein Verzeichnisdienst ist eine Datenbank mit Netzwerkanschluss: Sie speichert, wer und was es im Netz gibt, und sie beantwortet die Frage, ob jemand hineindarf.",
+html:`
+<h3>Die Rollen im Überblick</h3>
+<p>Active Directory ist ein Sammelbegriff. Gemeint ist meist AD DS, aber im Rollenkatalog von Windows Server stehen fünf Dienste nebeneinander:</p>
+<div class="tblwrap"><table>
+<tr><th>Kürzel</th><th>Name</th><th>Aufgabe</th></tr>
+<tr><td><strong>AD DS</strong></td><td>Domain Services</td><td>Der Kern: Verzeichnisdatenbank, Anmeldung, Gruppenrichtlinien</td></tr>
+<tr><td>AD CS</td><td>Certificate Services</td><td>Eigene Zertifizierungsstelle für die interne PKI</td></tr>
+<tr><td>AD FS</td><td>Federation Services</td><td>Anmeldung an fremden Anwendungen ohne zweites Kennwort</td></tr>
+<tr><td>AD LDS</td><td>Lightweight Directory Services</td><td>Schlankes Verzeichnis für Anwendungen, ohne Domänenfunktionen</td></tr>
+<tr><td>AD RMS</td><td>Rights Management Services</td><td>Rechteschutz an Dokumenten selbst</td></tr>
+</table></div>
+
+<h3>Die logische Struktur</h3>
+<div class="card">
+<pre style="font-family:var(--mono);font-size:.78rem;line-height:1.8;margin:0;overflow-x:auto;color:#cfe7ef">
+GESAMTSTRUKTUR (Forest)  firma.local
+  |   gemeinsames Schema, gemeinsamer globaler Katalog,
+  |   automatische Vertrauensstellungen zwischen allen Domänen
+  |
+  +-- STRUKTUR / Tree  firma.local
+  |     |
+  |     +-- DOMÄNE  firma.local
+  |     |     +-- OU=Abteilungen
+  |     |     |     +-- OU=Vertrieb   -> GPO "Laufwerke Vertrieb"
+  |     |     |     +-- OU=IT         -> GPO "Adminwerkzeuge"
+  |     |     +-- OU=Clients
+  |     |     +-- CN=Users   (Standardcontainer, KEINE OU!)
+  |     |
+  |     +-- UNTERDOMÄNE  berlin.firma.local
+  |
+  +-- zweite Struktur  andere-firma.local   (eigener Namensraum)
+</pre>
+</div>
+<div class="note warn"><b>Container ist nicht gleich OU</b>Die vorgegebenen Behälter <code>CN=Users</code> und <code>CN=Computers</code> sind gewöhnliche Container, keine Organisationseinheiten. An sie lassen sich <strong>keine</strong> Gruppenrichtlinien binden. Deshalb gehört zu jeder sauberen Einrichtung eine eigene OU-Struktur und die Umleitung der Standardablage mit <code>redirusr</code> und <code>redircmp</code>.</div>
+
+<h3>Domänencontroller und Datenbank</h3>
+<ul>
+<li>Ein <strong>Domänencontroller</strong> ist ein Windows Server mit der Rolle AD DS. Er beantwortet Anmeldungen und hält eine beschreibbare Kopie des Verzeichnisses.</li>
+<li>Die Datenbank heißt <code>NTDS.dit</code> und liegt in <code>C:\\Windows\\NTDS</code>.</li>
+<li><strong>SYSVOL</strong> ist eine Freigabe auf jedem DC und enthält Gruppenrichtlinienvorlagen und Anmeldeskripte. Sie wird per DFSR zwischen den DCs abgeglichen.</li>
+<li>Ein <strong>RODC</strong> ist ein schreibgeschützter DC für unsichere Standorte - er speichert standardmäßig keine Kennwörter.</li>
+<li><strong>Mindestens zwei DCs</strong> gehören zum Standard. Fällt der einzige aus, kann sich niemand mehr anmelden.</li>
+</ul>
+
+<h3>Das Schema</h3>
+<p>Das Schema definiert, welche Objektklassen es gibt und welche Attribute sie haben dürfen. Es gilt für die gesamte Gesamtstruktur und lässt sich erweitern - aber nicht zurücknehmen. Deshalb ist eine Schemaerweiterung, wie sie etwa Exchange mitbringt, eine Entscheidung ohne Rückweg.</p>
+
+<h3>Funktionsebenen</h3>
+<p>Domänen- und Gesamtstrukturfunktionsebene bestimmen, welche Merkmale nutzbar sind und welche Betriebssystemversionen als DC erlaubt bleiben. Sie richten sich nach dem ältesten DC und lassen sich nur nach oben ändern.</p>
+<x-term data-k="ps">
+Get-ADDomain | Select-Object DNSRoot, DomainMode, PDCEmulator
+Get-ADForest | Select-Object Name, ForestMode, SchemaMaster, GlobalCatalogs
+</x-term>
+
+<h3>Verwaltungswerkzeuge auf dem Arbeitsplatz</h3>
+<p>Auf einem Client stehen die AD-Werkzeuge erst nach der Installation von RSAT zur Verfügung. Danach existieren sowohl die Konsolen als auch das PowerShell-Modul.</p>
+<x-term data-k="ps">
+# Verfügbare RSAT-Bestandteile anzeigen
+Get-WindowsCapability -Online -Name RSAT*
+
+# Nur die AD-Werkzeuge nachinstallieren
+Add-WindowsCapability -Online -Name Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0
+
+# Prüfen, ob das Modul da ist
+Get-Module -ListAvailable ActiveDirectory
+</x-term>
+<div class="tblwrap"><table>
+<tr><th>Konsole</th><th>Aufruf</th><th>Zweck</th></tr>
+<tr><td>Benutzer und Computer</td><td><code>dsa.msc</code></td><td>Tägliche Objektverwaltung</td></tr>
+<tr><td>Verwaltungscenter</td><td><code>dsac.exe</code></td><td>Modernere Oberfläche, Papierkorb, PowerShell-Verlauf</td></tr>
+<tr><td>Standorte und Dienste</td><td><code>dssite.msc</code></td><td>Subnetze, Standorte, Replikation</td></tr>
+<tr><td>Domänen und Vertrauensstellungen</td><td><code>domain.msc</code></td><td>Trusts, Funktionsebenen</td></tr>
+<tr><td>Gruppenrichtlinienverwaltung</td><td><code>gpmc.msc</code></td><td>GPOs, Vererbung, Modellierung</td></tr>
+<tr><td>Attribut-Editor</td><td><code>adsiedit.msc</code></td><td>Rohzugriff auf Attribute - mit Vorsicht</td></tr>
+</table></div>
+`},
+
+{id:"ad-objekte", grp:"Active Directory", nav:"Objekte &amp; Gruppen", title:"Benutzer, Gruppen und Berechtigungen",
+lede:"Jedes Objekt hat einen eindeutigen Namen, eine unveränderliche SID und einen Platz in der Struktur. Wer diese drei Dinge auseinanderhält, versteht auch AGDLP.",
+html:`
+<h3>Namen und Kennungen</h3>
+<div class="tblwrap"><table>
+<tr><th>Bezeichnung</th><th>Beispiel</th><th>Eigenschaft</th></tr>
+<tr><td>Distinguished Name (DN)</td><td><code>CN=Max Mustermann,OU=Vertrieb,DC=firma,DC=local</code></td><td>Eindeutiger Pfad, ändert sich beim Verschieben</td></tr>
+<tr><td>sAMAccountName</td><td><code>m.mustermann</code></td><td>Klassischer Anmeldename, maximal 20 Zeichen</td></tr>
+<tr><td>UserPrincipalName (UPN)</td><td><code>m.mustermann@firma.local</code></td><td>Moderner Anmeldename im Mailformat</td></tr>
+<tr><td>SID</td><td><code>S-1-5-21-...-1108</code></td><td>Unveränderlich, daran hängen alle Berechtigungen</td></tr>
+<tr><td>GUID</td><td><code>objectGUID</code></td><td>Weltweit eindeutig, bleibt über alle Umzüge hinweg gleich</td></tr>
+</table></div>
+<div class="note"><b>Warum die SID so wichtig ist</b>NTFS-Berechtigungen speichern keine Namen, sondern SIDs. Ein gelöschtes und namensgleich neu angelegtes Konto bekommt eine neue SID - und verliert damit sämtliche Zugriffe. Deshalb gilt beim Austritt eines Mitarbeiters: deaktivieren, nicht löschen. Das Konto lässt sich später einem Nachfolger zuweisen oder sauber archivieren.</div>
+
+<h3>Gruppentypen und Gültigkeitsbereiche</h3>
+<p>Zwei Merkmale werden häufig verwechselt. Der <strong>Typ</strong> entscheidet, ob die Gruppe Rechte vergeben kann. Der <strong>Bereich</strong> entscheidet, wer Mitglied sein darf und wo die Gruppe verwendbar ist.</p>
+<div class="tblwrap"><table>
+<tr><th>Bereich</th><th>Mitglieder aus</th><th>Verwendbar in</th></tr>
+<tr><td>Lokal in Domäne</td><td>Gesamter Gesamtstruktur</td><td>Nur in der eigenen Domäne - typisch für Ressourcenrechte</td></tr>
+<tr><td>Global</td><td>Nur eigene Domäne</td><td>Gesamte Gesamtstruktur - typisch für Rollen und Abteilungen</td></tr>
+<tr><td>Universal</td><td>Gesamter Gesamtstruktur</td><td>Gesamte Gesamtstruktur - Mitgliedschaften liegen im globalen Katalog</td></tr>
+</table></div>
+<ul>
+<li><strong>Sicherheitsgruppe:</strong> bekommt eine SID, kann in Berechtigungen stehen.</li>
+<li><strong>Verteilergruppe:</strong> dient ausschließlich als E-Mail-Verteiler. Sie ist kein Sicherheitsprinzipal, taucht deshalb nicht im Zugriffstoken auf und kann <em>keine</em> Berechtigungen erhalten.</li>
+</ul>
+
+<h3>AGDLP - das Berechtigungsmuster</h3>
+<div class="card">
+<pre style="font-family:var(--mono);font-size:.8rem;line-height:1.85;margin:0;overflow-x:auto;color:#cfe7ef">
+ A ccount          Max Mustermann
+    |  kommt in
+ G lobal Group     G-Vertrieb            (die Rolle: "wer ist das")
+    |  wird Mitglied von
+ D omain L ocal    FS-Vertrieb-Aendern   (die Ressource: "worauf")
+    |  erhält
+ P ermission       NTFS: Ändern auf D:\\Daten\\Vertrieb
+</pre>
+</div>
+<p>Der Sinn dahinter: Auf dem Ordner steht nur <em>eine</em> Berechtigung, die sich nie mehr ändert. Wer künftig Zugriff bekommt, wird in die globale Gruppe aufgenommen - am Dateisystem muss niemand mehr etwas anfassen. In Gesamtstrukturen mit mehreren Domänen kommt eine universelle Gruppe dazwischen, daraus wird AGUDLP.</p>
+<x-term data-k="ps">
+# Die beiden Gruppen anlegen
+New-ADGroup -Name "G-Vertrieb"          -GroupScope Global      -GroupCategory Security -Path "OU=Gruppen,DC=firma,DC=local"
+New-ADGroup -Name "FS-Vertrieb-Aendern" -GroupScope DomainLocal -GroupCategory Security -Path "OU=Gruppen,DC=firma,DC=local"
+
+# Verschachteln und Benutzer aufnehmen
+Add-ADGroupMember "FS-Vertrieb-Aendern" -Members "G-Vertrieb"
+Add-ADGroupMember "G-Vertrieb"          -Members m.mustermann
+
+# Prüfen, wer am Ende tatsächlich berechtigt ist
+Get-ADGroupMember "FS-Vertrieb-Aendern" -Recursive | Select-Object Name, objectClass
+</x-term>
+<x-term data-k="cmd">
+:: Die Ressourcengruppe auf den Ordner berechtigen
+icacls D:\\Daten\\Vertrieb /grant "FIRMA\\FS-Vertrieb-Aendern":(OI)(CI)M /t
+</x-term>
+
+<h3>NTFS und Freigabe greifen zusammen</h3>
+<p>Bei einem Netzwerkzugriff gelten beide Berechtigungsebenen. Das Ergebnis ist immer die <strong>restriktivere</strong> der beiden. Lokal am Rechner zählt dagegen nur NTFS.</p>
+<div class="tblwrap"><table>
+<tr><th>Freigabe</th><th>NTFS</th><th>Effektiv über das Netz</th></tr>
+<tr><td>Vollzugriff</td><td>Lesen</td><td>Lesen</td></tr>
+<tr><td>Lesen</td><td>Vollzugriff</td><td>Lesen</td></tr>
+<tr><td>Ändern</td><td>Ändern</td><td>Ändern</td></tr>
+</table></div>
+<p>Die verbreitete Praxis: Auf der Freigabe wird großzügig berechtigt, die Feinsteuerung passiert vollständig über NTFS. Ein ausdrückliches Verweigern schlägt übrigens jedes Erlauben - auch das aus einer anderen Gruppe.</p>
+
+<h3>Wichtige Benutzerattribute</h3>
+<div class="tblwrap"><table>
+<tr><th>Attribut</th><th>Bedeutung</th></tr>
+<tr><td><code>userAccountControl</code></td><td>Bitfeld: aktiviert, Kennwort läuft nie ab, Smartcard erforderlich</td></tr>
+<tr><td><code>pwdLastSet</code></td><td>Zeitpunkt der letzten Kennwortänderung</td></tr>
+<tr><td><code>lastLogonTimestamp</code></td><td>Letzte Anmeldung, wird nur alle 9 bis 14 Tage repliziert</td></tr>
+<tr><td><code>lockoutTime</code></td><td>Zeitpunkt der Sperrung</td></tr>
+<tr><td><code>memberOf</code></td><td>Gruppenmitgliedschaften, ohne die primäre Gruppe</td></tr>
+<tr><td><code>proxyAddresses</code></td><td>Alle E-Mail-Adressen, von Exchange genutzt</td></tr>
+<tr><td><code>manager</code></td><td>Vorgesetzter als DN - Basis für Organigramme</td></tr>
+</table></div>
+<div class="note warn"><b>Achtung bei lastLogon</b><code>lastLogon</code> wird gar nicht repliziert und ist auf jedem DC unterschiedlich. Verwertbar ist nur <code>lastLogonTimestamp</code> beziehungsweise die davon abgeleitete Eigenschaft <code>LastLogonDate</code> - und selbst die ist bis zu zwei Wochen ungenau.</div>
+`},
+
+{id:"ad-technik", grp:"Active Directory", nav:"Technik darunter", title:"DNS, Kerberos, Ports und Replikation",
+lede:"Fast jede AD-Störung lässt sich auf drei Ursachen zurückführen: falsches DNS, abweichende Uhrzeit oder blockierte Ports. Diese Seite erklärt, warum.",
+html:`
+<h3>Ohne DNS kein Active Directory</h3>
+<p>Ein Client weiß nicht, wo sein Domänencontroller steht. Er fragt DNS - genauer gesagt nach SRV-Einträgen unterhalb von <code>_msdcs</code>. Zeigt ein Mitgliedsrechner auf einen öffentlichen DNS-Server statt auf den internen, findet er den DC nicht und die Anmeldung an der Domäne scheitert, obwohl das Internet funktioniert.</p>
+<x-term data-k="cmd">
+:: Welche Domänencontroller kennt das DNS?
+nslookup -type=SRV _ldap._tcp.dc._msdcs.firma.local
+
+:: Welchen DC benutzt dieser Rechner gerade?
+nltest /dsgetdc:firma.local
+echo %LOGONSERVER%
+</x-term>
+<x-term data-k="ps">
+Resolve-DnsName _ldap._tcp.dc._msdcs.firma.local -Type SRV
+Get-DnsClientServerAddress -AddressFamily IPv4
+</x-term>
+
+<h3>Kerberos und die Uhrzeit</h3>
+<p>Die Anmeldung läuft über Kerberos. Der DC ist gleichzeitig Schlüsselverteilungscenter: Er stellt beim Anmelden ein Ticket-Granting-Ticket aus, mit dem der Client später Diensttickets für Dateiserver und Anwendungen abholt.</p>
+<ul>
+<li>Kerberos-Tickets enthalten einen Zeitstempel. Weicht die Uhr um mehr als <strong>5 Minuten</strong> ab, wird das Ticket abgelehnt.</li>
+<li>Die Zeitquelle der Domäne ist der <strong>PDC-Emulator</strong> der Stammdomäne. Alle anderen DCs und alle Clients richten sich daran aus.</li>
+<li>Das Ticket enthält die Gruppenmitgliedschaften. Deshalb wirken neue Gruppen erst nach einer neuen Anmeldung.</li>
+<li>NTLM existiert noch als Rückfallebene, gilt aber als veraltet und wird schrittweise zurückgedrängt.</li>
+</ul>
+<x-term data-k="cmd">
+w32tm /query /status
+w32tm /resync /force
+klist
+klist purge
+</x-term>
+
+<h3>Die Ports, die man kennen muss</h3>
+<div class="tblwrap"><table>
+<tr><th>Port</th><th>Protokoll</th><th>Wofür</th></tr>
+<tr><td>53</td><td>DNS (TCP/UDP)</td><td>Auffinden der Domänencontroller</td></tr>
+<tr><td>88</td><td>Kerberos</td><td>Authentifizierung</td></tr>
+<tr><td>135</td><td>RPC Endpoint Mapper</td><td>Replikation, Verwaltungswerkzeuge</td></tr>
+<tr><td>389</td><td>LDAP</td><td>Verzeichnisabfragen im Klartext bzw. signiert</td></tr>
+<tr><td>636</td><td>LDAPS</td><td>LDAP über TLS</td></tr>
+<tr><td>445</td><td>SMB</td><td>SYSVOL, Gruppenrichtlinien, Dateifreigaben</td></tr>
+<tr><td>464</td><td>kpasswd</td><td>Kennwortänderungen</td></tr>
+<tr><td>3268 / 3269</td><td>Globaler Katalog</td><td>Gesamtstrukturweite Suche, mit und ohne TLS</td></tr>
+<tr><td>5985 / 5986</td><td>WinRM</td><td>PowerShell-Remoting über HTTP bzw. HTTPS</td></tr>
+<tr><td>9389</td><td>ADWS</td><td>Active Directory Web Services - Basis des PowerShell-Moduls</td></tr>
+</table></div>
+<x-term data-k="ps">
+389,636,88,445,9389 | ForEach-Object {
+    Test-NetConnection dc01 -Port $_ |
+        Select-Object @{n='Port';e={$_.RemotePort}}, TcpTestSucceeded
+}
+</x-term>
+
+<h3>Die fünf FSMO-Rollen</h3>
+<p>Manche Aufgaben verträgt kein verteiltes System. Sie liegen deshalb bei genau einem DC.</p>
+<div class="tblwrap"><table>
+<tr><th>Rolle</th><th>Ebene</th><th>Aufgabe</th><th>Wenn sie ausfällt</th></tr>
+<tr><td>Schemamaster</td><td>Gesamtstruktur</td><td>Einzige Stelle für Schemaänderungen</td><td>Nur bei Schemaerweiterungen spürbar</td></tr>
+<tr><td>Domänennamenmaster</td><td>Gesamtstruktur</td><td>Hinzufügen und Entfernen von Domänen</td><td>Nur bei Strukturänderungen spürbar</td></tr>
+<tr><td>RID-Master</td><td>Domäne</td><td>Verteilt Blöcke relativer Kennungen für neue SIDs</td><td>Irgendwann lassen sich keine neuen Objekte mehr anlegen</td></tr>
+<tr><td>PDC-Emulator</td><td>Domäne</td><td>Zeitquelle, Kennwortänderungen, Kontosperrungen, GPO-Bearbeitung</td><td>Sofort spürbar: Anmeldeprobleme, Zeitabweichung</td></tr>
+<tr><td>Infrastrukturmaster</td><td>Domäne</td><td>Pflegt Verweise auf Objekte anderer Domänen</td><td>Nur in Umgebungen mit mehreren Domänen relevant</td></tr>
+</table></div>
+<x-term data-k="cmd">
+netdom query fsmo
+</x-term>
+<x-term data-k="ps">
+Get-ADForest | Select-Object SchemaMaster, DomainNamingMaster
+Get-ADDomain | Select-Object PDCEmulator, RIDMaster, InfrastructureMaster
+</x-term>
+<div class="note warn"><b>Übertragen oder entreißen</b>Solange beide DCs erreichbar sind, wird eine Rolle sauber <em>übertragen</em> (transfer). Ist der Rolleninhaber endgültig verloren, wird sie <em>entrissen</em> (seize) - danach darf der alte DC nie wieder ins Netz, sonst entsteht ein Konflikt.</div>
+
+<h3>Globaler Katalog</h3>
+<p>Ein globaler Katalog enthält alle Objekte der gesamten Gesamtstruktur, aber nur mit einer Teilmenge der Attribute. Er beantwortet strukturweite Suchen und wird bei der Anmeldung gebraucht, um universelle Gruppen aufzulösen. In Umgebungen mit mehreren Standorten gehört an jeden Standort mindestens einer.</p>
+
+<h3>Replikation</h3>
+<ul>
+<li><strong>Innerhalb eines Standorts</strong> wird nahezu sofort repliziert, unkomprimiert, angestoßen durch Änderungsbenachrichtigungen.</li>
+<li><strong>Zwischen Standorten</strong> läuft die Replikation nach Zeitplan und komprimiert - üblich sind 180 Minuten.</li>
+<li>Kritische Änderungen wie Kontosperrungen werden <strong>dringend</strong> repliziert und warten nicht auf den Zeitplan.</li>
+<li>Der Knowledge Consistency Checker baut die Replikationstopologie automatisch auf.</li>
+</ul>
+<x-term data-k="cmd">
+repadmin /replsummary
+repadmin /showrepl dc02
+dcdiag /test:replications
+</x-term>
+<p>Wenn ein frisch zurückgesetztes Kennwort auf einem Rechner funktioniert und auf einem anderen nicht, lohnt fast immer ein Blick hierher - der zweite Rechner hat einen anderen DC erwischt.</p>
+`},
+
+{id:"ad-gpo", grp:"Active Directory", nav:"Gruppenrichtlinien", title:"Gruppenrichtlinien",
+lede:"Mit GPOs wird zentral festgelegt, wie Rechner und Benutzer sich verhalten. Die Kunst liegt weniger in den Einstellungen als in der Frage, welches Objekt am Ende gewinnt.",
+html:`
+<h3>Aufbau eines GPO</h3>
+<p>Ein Gruppenrichtlinienobjekt besteht aus zwei Teilen: dem Container im Verzeichnis und der Vorlage im SYSVOL. Es enthält zwei Konfigurationszweige:</p>
+<ul>
+<li><strong>Computerkonfiguration</strong> - wird beim Systemstart angewendet und gilt für den Rechner, unabhängig davon, wer sich anmeldet.</li>
+<li><strong>Benutzerkonfiguration</strong> - wird bei der Anmeldung angewendet und folgt dem Benutzer auf jeden Rechner.</li>
+</ul>
+<p>Verknüpft wird ein GPO mit einem Standort, einer Domäne oder einer OU - niemals mit einer Gruppe. Gruppen kommen nur in der Sicherheitsfilterung ins Spiel.</p>
+
+<h3>Die Verarbeitungsreihenfolge: LSDOU</h3>
+<div class="card">
+<pre style="font-family:var(--mono);font-size:.82rem;line-height:1.9;margin:0;overflow-x:auto;color:#cfe7ef">
+ L  Lokale Richtlinie        zuerst
+ S  Standort (Site)
+ D  Domäne
+ O  OU                       von oben nach unten
+ U  untergeordnete OU        zuletzt - und gewinnt damit
+</pre>
+</div>
+<p>Wer zuletzt schreibt, gewinnt. Widersprechen sich zwei Einstellungen, setzt sich also die am tiefsten verknüpfte durch. Innerhalb derselben Ebene entscheidet die Verknüpfungsreihenfolge - dort gewinnt die <strong>niedrigste</strong> Nummer.</p>
+<div class="tblwrap"><table>
+<tr><th>Sonderfall</th><th>Wirkung</th></tr>
+<tr><td>Vererbung deaktivieren</td><td>An einer OU werden alle Richtlinien von oben ignoriert</td></tr>
+<tr><td>Erzwungen (Enforced)</td><td>Schlägt die Blockade und kehrt die Reihenfolge um - das erzwungene GPO gewinnt gegen alles Tiefere</td></tr>
+<tr><td>Sicherheitsfilterung</td><td>GPO gilt nur für bestimmte Gruppen, erfordert das Recht "Gruppenrichtlinie übernehmen"</td></tr>
+<tr><td>WMI-Filter</td><td>GPO gilt nur, wenn eine Abfrage zutrifft, etwa nur auf Notebooks</td></tr>
+<tr><td>Loopbackverarbeitung</td><td>Benutzereinstellungen richten sich nach dem Rechner statt nach dem Benutzer - typisch für Terminalserver und Kioskrechner</td></tr>
+</table></div>
+
+<h3>Wann Richtlinien greifen</h3>
+<ul>
+<li>Computerrichtlinien beim Start, Benutzerrichtlinien bei der Anmeldung.</li>
+<li>Im laufenden Betrieb alle <strong>90 Minuten</strong> plus einem Zufallswert von bis zu 30 Minuten, damit nicht alle Clients gleichzeitig anfragen.</li>
+<li>Auf Domänencontrollern alle 5 Minuten.</li>
+<li>Manche Erweiterungen - etwa Softwareinstallation, Ordnerumleitung oder Laufwerkszuordnung - greifen nur beim Start oder bei der Anmeldung. Deshalb reicht <code>gpupdate /force</code> nicht immer aus.</li>
+</ul>
+<x-term data-k="cmd">
+gpupdate /force
+gpupdate /target:user /force /logoff
+
+:: Der wichtigste Diagnosebefehl überhaupt
+gpresult /h C:\\gpo-bericht.html /f
+gpresult /r /scope:computer
+</x-term>
+<x-term data-k="ps">
+# Bericht für eine Kombination aus Benutzer und Rechner
+Get-GPResultantSetOfPolicy -User FIRMA\\m.mustermann -Computer PC-042 -ReportType Html -Path C:\\rsop.html
+
+# Richtlinien im ganzen Netz aktualisieren
+Get-ADComputer -Filter "OperatingSystem -like '*Windows 1*'" |
+    ForEach-Object { Invoke-GPUpdate -Computer $_.Name -Force -RandomDelayInMinutes 5 }
+
+# GPOs sichern - die einzige eingebaute Versionierung
+Backup-GPO -All -Path C:\\GPO-Backup
+</x-term>
+
+<h3>Häufige Störungsbilder</h3>
+<div class="tblwrap"><table>
+<tr><th>Symptom</th><th>Wahrscheinliche Ursache</th><th>Prüfen mit</th></tr>
+<tr><td>GPO wirkt gar nicht</td><td>Objekt liegt in <code>CN=Users</code> statt in einer OU</td><td><code>Get-ADUser x -Properties DistinguishedName</code></td></tr>
+<tr><td>GPO wirkt bei einem Benutzer nicht</td><td>Sicherheitsfilterung schließt ihn aus</td><td><code>gpresult /r</code> - Abschnitt "Herausgefilterte GPOs"</td></tr>
+<tr><td>Falsche Einstellung gewinnt</td><td>Tiefere OU oder ein erzwungenes GPO überschreibt</td><td>RSoP-Bericht in der GPMC</td></tr>
+<tr><td>Laufwerk fehlt</td><td>Einstellung wirkt nur bei der Anmeldung</td><td>Ab- und wieder anmelden, dann <code>net use</code></td></tr>
+<tr><td>Nichts kommt an</td><td>SYSVOL nicht erreichbar oder Replikation gestört</td><td><code>dcdiag /test:sysvolcheck</code>, <code>repadmin /replsummary</code></td></tr>
+</table></div>
+`},
+
+{id:"praxis", grp:"Anwenden", nav:"Praxisszenarien", title:"Vier Abläufe von Anfang bis Ende",
+lede:"Jetzt greifen die drei Welten ineinander. Diese Abläufe entsprechen dem, was im ersten Jahr im Betrieb tatsächlich auf dem Tisch landet.",
+html:`
+<h3>1. Neuer Mitarbeiter, vollständig eingerichtet</h3>
+<x-term data-k="ps">
+Import-Module ActiveDirectory
+
+$vorname = 'Anna'; $nachname = 'Berger'
+$sam     = 'a.berger'
+$ou      = 'OU=Vertrieb,OU=Abteilungen,DC=firma,DC=local'
+
+New-ADUser -Name "$vorname $nachname" -GivenName $vorname -Surname $nachname &#96;
+    -DisplayName "$nachname, $vorname" -SamAccountName $sam &#96;
+    -UserPrincipalName "$sam@firma.local" -Path $ou &#96;
+    -AccountPassword (Read-Host 'Startkennwort' -AsSecureString) &#96;
+    -ChangePasswordAtLogon $true -Enabled $true &#96;
+    -Department 'Vertrieb' -Title 'Sachbearbeiterin' -Office 'Berlin'
+
+Add-ADGroupMember 'G-Vertrieb' -Members $sam
+Add-ADGroupMember 'G-Drucker-EG' -Members $sam
+
+# Kontrolle
+Get-ADUser $sam -Properties Department,Title,MemberOf |
+    Select-Object Name,Department,Title,@{n='Gruppen';e={($_.MemberOf | ForEach-Object {($_ -split ',')[0] -replace 'CN='}) -join ', '}}
+</x-term>
+
+<h3>2. Zwanzig Konten aus einer Tabelle anlegen</h3>
+<p>Die CSV enthält die Spalten <code>Vorname;Nachname;Kuerzel;Abteilung</code>. Erst ein Testlauf, dann der Ernstfall.</p>
+<x-term data-k="ps">
+$start = Read-Host 'Startkennwort' -AsSecureString
+
+Import-Csv C:\\neu.csv -Delimiter ';' -Encoding UTF8 | ForEach-Object {
+    $params = @{
+        Name              = "$($_.Vorname) $($_.Nachname)"
+        GivenName         = $_.Vorname
+        Surname           = $_.Nachname
+        SamAccountName    = $_.Kuerzel
+        UserPrincipalName = "$($_.Kuerzel)@firma.local"
+        Department        = $_.Abteilung
+        Path              = "OU=$($_.Abteilung),OU=Abteilungen,DC=firma,DC=local"
+        AccountPassword   = $start
+        ChangePasswordAtLogon = $true
+        Enabled           = $true
+    }
+    try   { New-ADUser @params -ErrorAction Stop; Write-Host "OK  $($_.Kuerzel)" -ForegroundColor Green }
+    catch { Write-Warning "FEHLER $($_.Kuerzel): $($_.Exception.Message)" }
+}
+</x-term>
+<p>Die Technik mit der Hashtabelle heißt Splatting. Sie hält lange Befehle lesbar und erlaubt es, Parameter abhängig von Bedingungen zu setzen.</p>
+
+<h3>3. Störung: Benutzer kommt nicht mehr auf sein Laufwerk</h3>
+<div class="tblwrap"><table>
+<tr><th>Schritt</th><th>Befehl</th><th>Was die Antwort bedeutet</th></tr>
+<tr><td>1. Konto gesperrt?</td><td><code>Search-ADAccount -LockedOut</code></td><td>Treffer: entsperren mit <code>Unlock-ADAccount</code></td></tr>
+<tr><td>2. Konto aktiv?</td><td><code>Get-ADUser a.berger -Properties Enabled,LockedOut</code></td><td>Enabled False: der Austrittsprozess hat zugeschlagen</td></tr>
+<tr><td>3. Gruppe vorhanden?</td><td><code>Get-ADPrincipalGroupMembership a.berger</code></td><td>Fehlt die Gruppe, hier ergänzen</td></tr>
+<tr><td>4. Im Token angekommen?</td><td><code>whoami /groups</code> am Client</td><td>Fehlt sie hier trotz AD-Eintrag: neu anmelden oder <code>klist purge</code></td></tr>
+<tr><td>5. Erreicht er den Server?</td><td><code>Test-NetConnection srv01 -Port 445</code></td><td>False: Netz, Firewall oder Namensauflösung</td></tr>
+<tr><td>6. Richtige Berechtigung?</td><td><code>Get-ADGroupMember 'FS-...' -Recursive</code></td><td>Zeigt, wer tatsächlich Zugriff hat</td></tr>
+<tr><td>7. GPO-Laufwerk da?</td><td><code>gpresult /h bericht.html</code></td><td>Zeigt, ob die Zuordnung überhaupt angekommen ist</td></tr>
+</table></div>
+
+<h3>4. Bestandsaufnahme für die Dokumentation</h3>
+<x-term data-k="ps">
+$datum = Get-Date -Format 'yyyy-MM-dd'
+
+# Inaktive Konten der letzten 90 Tage
+Search-ADAccount -AccountInactive -TimeSpan 90.00:00:00 -UsersOnly |
+    Where-Object Enabled -eq $true |
+    Select-Object Name, SamAccountName, LastLogonDate |
+    Export-Csv "C:\\Doku\\inaktiv_$datum.csv" -NoTypeInformation -Delimiter ';' -Encoding UTF8
+
+# Betriebssysteme im Netz zählen
+Get-ADComputer -Filter * -Properties OperatingSystem |
+    Group-Object OperatingSystem |
+    Sort-Object Count -Descending |
+    Select-Object Count, Name
+
+# Mitglieder aller administrativen Gruppen
+'Domänen-Admins','Organisations-Admins','Schema-Admins' | ForEach-Object {
+    Get-ADGroupMember $_ -Recursive |
+        Select-Object @{n='Gruppe';e={$_}}, Name, SamAccountName
+}
+</x-term>
+<x-term data-k="cmd">
+:: Schnelle Hardware- und Systemübersicht eines Clients
+systeminfo > C:\\Doku\\pc042.txt
+ipconfig /all >> C:\\Doku\\pc042.txt
+gpresult /h C:\\Doku\\pc042-gpo.html /f
+</x-term>
+
+<div class="note"><b>Gewohnheit, die sich auszahlt</b>Vor jeder Massenänderung ein Durchlauf mit <code>-WhatIf</code> und ein Export des Ist-Zustands nach CSV. Das kostet zwei Minuten und ist im Zweifel die einzige Möglichkeit, den Zustand vor der Änderung zu rekonstruieren.</div>
+`}
+
+);
+
+/* =====================================================================
+   WISSENSTEST  [Frage, Optionen, Index der richtigen Antwort, Erklärung, Thema]
+   ===================================================================== */
+
+var QUIZ = [
+["Was fließt in PowerShell durch die Pipe?",["Textzeilen wie in CMD","Objekte mit Eigenschaften und Methoden","XML-Dokumente","Dateihandles"],1,"Genau das ist der Kernunterschied: CMD reicht Text weiter, PowerShell reicht vollständige .NET-Objekte weiter. Deshalb kann jede Pipeline-Stufe auf echte Eigenschaften zugreifen.","PowerShell"],
+["Welches Namensschema haben Cmdlets?",["Substantiv-Verb","Verb-Substantiv im Singular","Verb-Substantiv im Plural","Nur ein Kleinbuchstabenwort"],1,"Get-Service, New-ADUser, Test-NetConnection - immer Verb, Bindestrich, Substantiv im Singular.","PowerShell"],
+["Welcher Befehl zeigt alle Eigenschaften und Methoden eines Objekts?",["Get-Help","Get-Member","Get-Command","Format-List"],1,"Get-Member zeigt die Struktur des Objekts und damit, woran die nächste Pipeline-Stufe andocken kann.","PowerShell"],
+["Warum sollte Format-Table immer am Ende der Pipeline stehen?",["Aus Geschwindigkeitsgründen","Weil es die Objekte in Formatierungsanweisungen umwandelt","Weil es sonst nicht sortiert","Es gibt keinen Grund"],1,"Nach einem Format-Cmdlet liegen keine echten Objekte mehr vor. Ein anschließendes Export-Csv erzeugt dann unbrauchbaren Inhalt.","PowerShell"],
+["Was bewirkt der Parameter -WhatIf?",["Er zeigt die Hilfe an","Er zeigt an, was passieren würde, ohne es auszuführen","Er erzwingt die Ausführung","Er protokolliert in eine Datei"],1,"Der wichtigste Schutz vor Massenfehlern. Vor jedem Löschen oder Ändern vieler Objekte gehört -WhatIf in die Zeile.","PowerShell"],
+["Warum fängt try/catch manche Fehler nicht ab?",["Weil catch falsch geschrieben ist","Weil nur abbrechende Fehler abgefangen werden und -ErrorAction Stop fehlt","Weil PowerShell keine Fehlerbehandlung kennt","Weil das Skript nicht signiert ist"],1,"Die meisten Cmdlets erzeugen nicht abbrechende Fehler. Erst -ErrorAction Stop macht sie abbrechend und damit für catch sichtbar.","PowerShell"],
+["Welche Ausführungsrichtlinie erlaubt lokale Skripte, verlangt aber für heruntergeladene eine Signatur?",["Restricted","AllSigned","RemoteSigned","Bypass"],2,"RemoteSigned ist der übliche Kompromiss zwischen Arbeitsfähigkeit und Schutz vor Skripten aus dem Internet.","PowerShell"],
+["Über welchen Port läuft PowerShell-Remoting standardmäßig unverschlüsselt?",["445","3389","5985","9389"],2,"WinRM nutzt 5985 für HTTP und 5986 für HTTPS. 9389 gehört zu den Active Directory Web Services, 3389 zu RDP.","PowerShell"],
+["Was ist der Unterschied zwischen powershell.exe und pwsh.exe?",["Keiner, nur zwei Namen","powershell.exe ist Windows PowerShell 5.1, pwsh.exe ist PowerShell 7 und läuft parallel dazu","pwsh.exe ist die veraltete Fassung","pwsh.exe läuft nur auf Servern"],1,"Beide sind bewusst nebeneinander installierbar. 5.1 ist fest im Betriebssystem verankert, 7.x wird separat installiert und läuft auch auf Linux und macOS.","PowerShell"],
+["Wie filtert man eine AD-Abfrage am effizientesten?",["Mit Where-Object nach der Abfrage","Mit -Filter direkt im Cmdlet, damit der DC filtert","Mit findstr","Mit Select-Object"],1,"Filtern links: Der Domänencontroller schickt dann nur die Treffer über das Netz statt alle Objekte.","PowerShell"],
+["Was macht $_ in einer Pipeline?",["Es beendet die Pipeline","Es steht für das aktuell verarbeitete Objekt","Es ist ein Kommentarzeichen","Es fügt eine Zeile ein"],1,"$_ beziehungsweise $PSItem ist der Platzhalter für das Objekt, das gerade durch die Pipeline läuft.","PowerShell"],
+
+["Welche Operatoren führen den zweiten Befehl nur bei Erfolg des ersten aus?",["&","&&","||","|"],1,"&& prüft ERRORLEVEL 0. || ist das Gegenteil und läuft nur bei Fehler, & führt unabhängig vom Ergebnis aus.","CMD"],
+["Was bewirkt 2>&1 in CMD?",["Zwei Dateien werden verglichen","Die Fehlerausgabe wird in die normale Ausgabe umgeleitet","Der Befehl läuft zweimal","Die Ausgabe wird verworfen"],1,"Kanal 2 ist die Fehlerausgabe, Kanal 1 die Standardausgabe. So landet beides gemeinsam in einer Datei.","CMD"],
+["Welcher Befehl ist das CMD-Gegenstück zu grep?",["find /v","findstr","where","fc"],1,"findstr beherrscht rekursive Suche, reguläre Ausdrücke und Groß-/Kleinschreibungsoptionen. find ist deutlich einfacher.","CMD"],
+["Wofür steht ERRORLEVEL 0?",["Kein Befehl ausgeführt","Der letzte Befehl war erfolgreich","Ein Fehler ist aufgetreten","Der Befehl wurde abgebrochen"],1,"0 bedeutet Erfolg. Achtung: if errorlevel 1 prüft auf größer oder gleich 1, nicht auf genau 1.","CMD"],
+["Welcher Befehl spiegelt Verzeichnisse inklusive NTFS-Berechtigungen?",["copy /y","xcopy /e","robocopy /mir /copyall","move /s"],2,"robocopy mit /mir spiegelt exakt und /copyall überträgt alle NTFS-Informationen. Achtung: /mir löscht im Ziel, was in der Quelle fehlt.","CMD"],
+["Was braucht eine Batchdatei, um Variablen innerhalb einer Schleife korrekt zu lesen?",["@echo off","setlocal enabledelayedexpansion und !var!","set /a","call"],1,"Ohne verzögerte Erweiterung wird %var% einmal beim Einlesen des Blocks ersetzt und behält den alten Wert.","CMD"],
+["Welcher Befehl zeigt die offenen Ports mit der zugehörigen Prozess-ID?",["ipconfig /all","netstat -ano","tasklist /svc","arp -a"],1,"netstat -ano: -a alle Verbindungen, -n numerisch, -o mit PID. Danach lässt sich die PID per tasklist auflösen.","CMD"],
+["Womit findet man heraus, welche EXE bei einem Befehl tatsächlich startet?",["dir /s","where","find","assoc"],1,"where durchsucht die PATH-Variable und zeigt den vollständigen Pfad - der erste Schritt bei Versionskonflikten.","CMD"],
+["Welcher Befehl leert den DNS-Cache des Clients?",["ipconfig /renew","ipconfig /flushdns","nslookup /clear","netsh reset"],1,"ipconfig /flushdns verwirft zwischengespeicherte Auflösungen. /displaydns zeigt sie vorher an.","CMD"],
+["Welche Reihenfolge ist bei beschädigten Systemdateien üblich?",["Erst sfc, dann DISM","Erst DISM /RestoreHealth, dann sfc /scannow","Nur chkdsk","Nur bcdedit"],1,"sfc greift auf den Komponentenspeicher zurück. Ist dieser selbst beschädigt, muss DISM ihn zuerst reparieren.","CMD"],
+
+["Was ist Active Directory im Kern?",["Ein Dateisystem","Ein Verzeichnisdienst mit verteilter Datenbank und Authentifizierung","Eine Shell","Ein Netzwerkprotokoll"],1,"AD DS speichert Objekte in der NTDS.dit, repliziert sie zwischen Domänencontrollern und authentifiziert Anmeldungen.","Active Directory"],
+["Warum funktioniert AD ohne korrektes DNS nicht?",["Weil AD DNS-Namen als Kennwort nutzt","Weil Clients ihre Domänencontroller über SRV-Einträge finden","Weil DNS die Kennwörter speichert","Weil DNS die Replikation durchführt"],1,"Ohne die SRV-Einträge unter _msdcs findet der Client keinen DC. Deshalb müssen Mitgliedsrechner auf die internen DNS-Server zeigen.","Active Directory"],
+["Wie groß darf die Zeitabweichung für Kerberos standardmäßig höchstens sein?",["30 Sekunden","5 Minuten","1 Stunde","24 Stunden"],1,"Kerberos-Tickets enthalten Zeitstempel. Bei mehr als 5 Minuten Abweichung schlägt die Anmeldung fehl - die Zeitwurzel ist der PDC-Emulator.","Active Directory"],
+["Welche FSMO-Rolle ist Zeitquelle der Domäne und bearbeitet Kontosperrungen?",["RID-Master","Schemamaster","PDC-Emulator","Infrastrukturmaster"],2,"Der PDC-Emulator ist die Rolle, deren Ausfall am schnellsten auffällt: Zeit, Kennwortänderungen, Sperrungen und GPO-Bearbeitung hängen daran.","Active Directory"],
+["Welche beiden FSMO-Rollen gibt es nur einmal pro Gesamtstruktur?",["RID-Master und PDC-Emulator","Schemamaster und Domänennamenmaster","Infrastrukturmaster und RID-Master","PDC-Emulator und Infrastrukturmaster"],1,"Schemamaster und Domänennamenmaster sind gesamtstrukturweit, die anderen drei existieren je Domäne.","Active Directory"],
+["Über welchen Port spricht das PowerShell-Modul ActiveDirectory mit dem DC?",["389","445","9389","3268"],2,"Das Modul nutzt die Active Directory Web Services auf TCP 9389. Die klassischen Werkzeuge wie dsquery verwenden dagegen LDAP auf 389.","Active Directory"],
+["Welcher Port gehört zum globalen Katalog?",["88","135","389","3268"],3,"3268 unverschlüsselt, 3269 über TLS. Der globale Katalog beantwortet gesamtstrukturweite Suchen.","Active Directory"],
+["Wofür steht AGDLP?",["Ein Replikationsprotokoll","Account in Global, Global in Domain Local, Domain Local erhält Permission","Ein Sicherungsverfahren","Eine Namenskonvention für OUs"],1,"Das Muster sorgt dafür, dass an der Ressource genau eine Berechtigung steht und Zugriffe nur noch über Gruppenmitgliedschaften gesteuert werden.","Active Directory"],
+["Warum sollte man ausgeschiedene Mitarbeiterkonten deaktivieren statt löschen?",["Aus Höflichkeit","Weil Berechtigungen an der SID hängen, die bei Neuanlage verloren geht","Weil Löschen nicht möglich ist","Weil die Lizenz weiterläuft"],1,"NTFS speichert SIDs, keine Namen. Ein neu angelegtes, namensgleiches Konto hat eine andere SID und damit keinerlei alte Zugriffe.","Active Directory"],
+["Warum wirkt eine neu zugewiesene Gruppe nicht sofort?",["Weil die Replikation Tage braucht","Weil das Zugriffstoken bei der Anmeldung gebaut wird","Weil Gruppen erst genehmigt werden müssen","Weil der DNS-Cache zuerst ablaufen muss"],1,"Die Gruppen stehen im Kerberos-Ticket, das bei der Anmeldung ausgestellt wird. Abmelden und neu anmelden oder klist purge hilft.","Active Directory"],
+["An welche Objekte lassen sich Gruppenrichtlinien verknüpfen?",["An Gruppen","An Standort, Domäne und OU","Nur an Benutzer","An beliebige Container einschließlich CN=Users"],1,"Nur Standort, Domäne und OU. Gruppen kommen ausschließlich über die Sicherheitsfilterung ins Spiel - und CN=Users ist keine OU.","Active Directory"],
+["In welcher Reihenfolge werden GPOs verarbeitet?",["OU, Domäne, Standort, lokal","Lokal, Standort, Domäne, OU","Domäne, lokal, OU, Standort","Zufällig"],1,"LSDOU. Wer zuletzt schreibt, gewinnt - die am tiefsten verknüpfte Richtlinie setzt sich durch, sofern nichts erzwungen ist.","Active Directory"],
+["Was schlägt eine deaktivierte Vererbung an einer OU?",["Nichts","Ein als erzwungen markiertes GPO","Ein WMI-Filter","Die lokale Richtlinie"],1,"Enforced durchbricht die Blockade und gewinnt zusätzlich gegen tiefer verknüpfte Richtlinien.","Active Directory"],
+["In welchem Intervall aktualisieren Clients ihre Gruppenrichtlinien im Hintergrund?",["Alle 5 Minuten","Alle 90 Minuten plus Zufallsversatz","Alle 12 Stunden","Nur beim Start"],1,"90 Minuten plus bis zu 30 Minuten Zufallswert. Auf Domänencontrollern sind es 5 Minuten.","Active Directory"],
+["Welcher Befehl erzeugt einen lesbaren HTML-Bericht der angewendeten Richtlinien?",["gpupdate /force","gpresult /h bericht.html","secedit /export","dcgpofix"],1,"gpresult /h ist der erste Griff bei jeder GPO-Störung: Er zeigt auch die herausgefilterten Objekte.","Active Directory"],
+["Welche Freigabe enthält die Gruppenrichtlinienvorlagen und Anmeldeskripte?",["NETLOGON allein","SYSVOL","ADMIN$","C$"],1,"SYSVOL liegt auf jedem DC und wird per DFSR repliziert. NETLOGON ist ein Unterordner davon.","Active Directory"],
+["Welcher Gruppenbereich kann Mitglieder aus der gesamten Gesamtstruktur aufnehmen, ist aber nur in der eigenen Domäne verwendbar?",["Global","Universal","Lokal in Domäne","Verteilergruppe"],2,"Deshalb ist die domänenlokale Gruppe im AGDLP-Muster die Ressourcengruppe, an der die Berechtigung hängt.","Active Directory"],
+["Welche Gruppenart kann keine Berechtigungen vergeben?",["Sicherheitsgruppe","Verteilergruppe","Globale Gruppe","Universelle Gruppe"],1,"Verteilergruppen sind keine Sicherheitsprinzipale: Sie erscheinen nicht im Zugriffstoken und lassen sich daher nicht in Berechtigungslisten eintragen.","Active Directory"],
+["Welcher Befehl prüft die Replikation zwischen Domänencontrollern?",["dcdiag /test:dns","repadmin /replsummary","nltest /dsgetdc","netdom query fsmo"],1,"repadmin /replsummary gibt den Überblick, /showrepl die Details pro Partner.","Active Directory"],
+["Was bedeutet der Attributwert LastLogonDate zuverlässig?",["Die Anmeldung auf die Minute genau","Einen bis zu zwei Wochen ungenauen Näherungswert","Die Anzahl der Anmeldungen","Den Zeitpunkt der Kontoerstellung"],1,"lastLogonTimestamp wird nur alle 9 bis 14 Tage repliziert. Für Audits reicht das, für minutengenaue Aussagen nicht.","Active Directory"],
+["Welches Cmdlet findet Konten, die seit 90 Tagen nicht mehr genutzt wurden?",["Get-ADUser -Filter *","Search-ADAccount -AccountInactive -TimeSpan 90.00:00:00","Get-ADObject -Deleted","Test-ADServiceAccount"],1,"Search-ADAccount kennt außerdem -LockedOut, -AccountDisabled und -AccountExpired - ein Werkzeug für den halben Audit.","Active Directory"],
+["Was passiert beim Entreißen (seize) einer FSMO-Rolle?",["Die Rolle wird sauber übergeben","Die Rolle wird übernommen und der alte Inhaber darf nie wieder ins Netz","Nichts, es ist nur ein Test","Die Domäne wird neu aufgebaut"],1,"Übertragen setzt beide DCs online voraus. Entreißen ist der Notfallweg - der alte Rolleninhaber muss danach bereinigt werden.","Active Directory"],
+["Welches Werkzeug muss auf einem Client nachinstalliert werden, um Get-ADUser nutzen zu können?",["Windows Terminal","RSAT beziehungsweise die AD-Verwaltungswerkzeuge","Sysinternals Suite","Der DNS-Client"],1,"Ohne RSAT fehlt sowohl das PowerShell-Modul ActiveDirectory als auch die Konsole dsa.msc.","Active Directory"],
+["Welche Aussage zur Kombination aus Freigabe- und NTFS-Berechtigung stimmt?",["Die großzügigere gewinnt","Die restriktivere gewinnt","Nur die Freigabe zählt","Nur NTFS zählt, auch über das Netz"],1,"Über das Netz gilt immer die restriktivere Ebene. Lokal am Rechner greift ausschließlich NTFS.","Active Directory"],
+["Worin unterscheiden sich RemoteSigned und Unrestricted?",["Gar nicht, nur im Namen","Unter RemoteSigned läuft ein heruntergeladenes Skript nur mit gültiger Signatur, unter Unrestricted nach einer Rückfrage","RemoteSigned erlaubt gar keine Skripte","Unrestricted verlangt immer eine Signatur"],1,"Beide lassen lokale Skripte zu. Der Unterschied betrifft ausschließlich Dateien mit Herkunftsmarkierung - und genau dort liegt der Schutz.","PowerShell"],
+["Woran erkennt PowerShell, dass ein Skript heruntergeladen wurde?",["Am Dateidatum","Am NTFS-Datenstrom Zone.Identifier","Am Dateinamen","An der Dateigröße"],1,"Windows legt beim Download einen alternativen Datenstrom mit der Herkunftszone an. Unblock-File entfernt ihn wieder.","PowerShell"],
+["Welcher Bereich der Ausführungsrichtlinie schlägt alle anderen?",["LocalMachine","CurrentUser","MachinePolicy aus der Gruppenrichtlinie","Process"],2,"Die Rangfolge lautet MachinePolicy, UserPolicy, Process, CurrentUser, LocalMachine. Deshalb bleibt Set-ExecutionPolicy wirkungslos, wenn eine GPO etwas vorgibt.","PowerShell"],
+["Welcher Befehl zeigt am Client, welche Gruppen tatsächlich im Zugriffstoken stehen?",["net user /domain","whoami /groups","gpresult /r","klist tickets"],1,"whoami /groups liest das aktuelle Token aus - der beste Beweis dafür, ob eine Gruppenänderung schon angekommen ist.","Active Directory"]
+];
+
+/* =====================================================================
+   QUELLEN
+   ===================================================================== */
+
+var QUELLEN = [
+["Windows Commands - offizielle A-Z-Referenz","https://learn.microsoft.com/de-de/windows-server/administration/windows-commands/windows-commands","Die maßgebliche Liste aller Kommandozeilenbefehle mit Syntax, Parametern und unterstützten Windows-Versionen. Hier nachschlagen, bevor man irgendeiner Webseite glaubt."],
+["Command-line syntax key","https://learn.microsoft.com/de-de/windows-server/administration/windows-commands/command-line-syntax-key","Erklärt die Notation der Syntaxblöcke - eckige Klammern, geschweifte Klammern, senkrechte Striche. Ohne diese Seite liest man jede Referenz halb falsch."],
+["PowerShell-Dokumentation","https://learn.microsoft.com/de-de/powershell/","Einstiegspunkt der gesamten PowerShell-Dokumentation mit Cmdlet-Referenz, Sprachbeschreibung und Lernpfaden."],
+["PowerShell-Supportlebenszyklus","https://learn.microsoft.com/de-de/powershell/scripting/install/powershell-support-lifecycle","Zeigt, welche Versionen aktuell unterstützt werden. Windows PowerShell 5.1 ist Bestandteil von Windows, PowerShell 7 folgt einem eigenen LTS-Zyklus."],
+["Übersicht über Active Directory-Domänendienste","https://learn.microsoft.com/de-de/windows-server/identity/ad-ds/get-started/virtual-dc/active-directory-domain-services-overview","Die Grundlagenseite zu AD DS: Datenspeicher, Schema, globaler Katalog und Abfragemechanismen."],
+["AD DS installieren","https://learn.microsoft.com/de-de/windows-server/identity/ad-ds/deploy/install-active-directory-domain-services--level-100-","Beschreibt die Installation eines Domänencontrollers über Server-Manager und über PowerShell, inklusive der benötigten Berechtigungen."],
+["Funktionsebenen von AD DS","https://learn.microsoft.com/de-de/windows-server/identity/ad-ds/active-directory-functional-levels","Welche Funktionsebene welche Merkmale freischaltet und welche Serverversionen als DC zulässig bleiben."],
+["Lernpfad: Active Directory-Domänendienste","https://learn.microsoft.com/de-de/training/paths/active-directory-domain-services/","Kostenloser, strukturierter Lernpfad von Microsoft zu Domänen, OUs, DCs, FSMO-Rollen und Gruppenrichtlinien - gut als Ergänzung zur Prüfungsvorbereitung."],
+["ActiveDirectory-Modul: Cmdlet-Referenz","https://learn.microsoft.com/de-de/powershell/module/activedirectory/","Alle Cmdlets des AD-Moduls mit Parametern und Beispielen - die Referenz hinter Get-ADUser, New-ADUser und Co."],
+["Best Practices für das Absichern von Active Directory","https://learn.microsoft.com/de-de/windows-server/identity/ad-ds/plan/security-best-practices/best-practices-for-securing-active-directory","Microsofts Leitfaden zur Härtung: privilegierte Konten, Angriffswege, Schutzmaßnahmen."],
+["SS64 - Windows CMD und PowerShell","https://ss64.com/nt/","Unabhängige, seit Jahren gepflegte Befehlsreferenz mit knappen Beispielen. Kein Ersatz für Microsoft Learn, aber oft schneller zu lesen."],
+["PowerShell auf GitHub","https://github.com/PowerShell/PowerShell","Quellcode, Releases und Änderungsprotokolle von PowerShell 7 - die Primärquelle für Versionsfragen."]
+];
+
+/* =====================================================================
+   ANWENDUNG
+   ===================================================================== */
+
+var ALL_CMDS = []
+  .concat(CMD_DB.map(function(r){ return {s:"cmd", label:"CMD",           n:r[0],k:r[1],short:r[2],desc:r[3],ex:r[4],rel:r[5]}; }))
+  .concat(PS_DB .map(function(r){ return {s:"ps",  label:"PowerShell",    n:r[0],k:r[1],short:r[2],desc:r[3],ex:r[4],rel:r[5]}; }))
+  .concat(AD_DB .map(function(r){ return {s:"ad",  label:"Active Directory",n:r[0],k:r[1],short:r[2],desc:r[3],ex:r[4],rel:r[5]}; }));
+
+var EXTRA_VIEWS = [
+  {id:"befehle",  grp:"Nachschlagen", nav:"Befehlssuche", title:"Befehlssuche"},
+  {id:"quiz",     grp:"Nachschlagen", nav:"Wissenstest",  title:"Wissenstest"},
+  {id:"quellen",  grp:"Nachschlagen", nav:"Quellen",      title:"Quellen"},
+  {id:"impressum",grp:"Rechtliches",  nav:"Impressum",    title:"Impressum"}
+];
+
+var state = {
+  view: "start",
+  read: {},
+  filter: "alle",
+  suche: "",
+  quizIdx: 0, quizRichtig: 0, quizBeantwortet: 0
+};
+
+try { state.read = JSON.parse(localStorage.getItem("kv-gelesen") || "{}"); } catch(e) { state.read = {}; }
+
+function speichern(){
+  try { localStorage.setItem("kv-gelesen", JSON.stringify(state.read)); } catch(e) {}
+}
+
+function esc(t){
+  return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+/* ---- Terminalblöcke aus <x-term> erzeugen ---- */
+var KLASSEN = { cmd:["t-cmd","Eingabeaufforderung"], ps:["t-ps","PowerShell"], ad:["t-ad","Active Directory"] };
+
+function termsAufbauen(root){
+  var list = root.querySelectorAll("x-term");
+  Array.prototype.forEach.call(list, function(el){
+    var art  = el.getAttribute("data-k") || "cmd";
+    var meta = KLASSEN[art] || KLASSEN.cmd;
+    var code = el.textContent.replace(/^\n+/,"").replace(/\s+$/,"");
+
+    var box = document.createElement("div");
+    box.className = "term";
+
+    var head = document.createElement("div");
+    head.className = "term-head";
+    var tag = document.createElement("span");
+    tag.className = "tag " + meta[0];
+    tag.textContent = meta[1];
+    var btn = document.createElement("button");
+    btn.className = "copy";
+    btn.type = "button";
+    btn.textContent = "Kopieren";
+    btn.addEventListener("click", function(){
+      kopieren(code, btn);
+    });
+    head.appendChild(tag);
+    head.appendChild(btn);
+
+    var pre = document.createElement("pre");
+    pre.textContent = code;
+
+    box.appendChild(head);
+    box.appendChild(pre);
+    el.parentNode.replaceChild(box, el);
+  });
+}
+
+function kopieren(text, btn){
+  var fertig = function(){
+    var alt = btn.textContent;
+    btn.textContent = "Kopiert";
+    setTimeout(function(){ btn.textContent = alt; }, 1400);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(fertig, function(){ ersatzKopie(text, fertig); });
+  } else {
+    ersatzKopie(text, fertig);
+  }
+}
+function ersatzKopie(text, fertig){
+  var ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); fertig(); } catch(e) {}
+  document.body.removeChild(ta);
+}
+
+/* ---- Navigation ---- */
+function navBauen(){
+  var nav = document.getElementById("sideNav");
+  var alle = CHAPTERS.map(function(c){ return {id:c.id, grp:c.grp, nav:c.nav}; }).concat(EXTRA_VIEWS);
+  var html = "";
+  var letzteGruppe = null;
+
+  alle.forEach(function(e){
+    if (e.grp !== letzteGruppe) {
+      html += '<div class="navgroup">' + e.grp + "</div>";
+      letzteGruppe = e.grp;
+    }
+    var istKapitel = CHAPTERS.some(function(c){ return c.id === e.id; });
+    var klasse = "navitem" + (state.view === e.id ? " active" : "") + (state.read[e.id] ? " done" : "");
+    html += '<button class="' + klasse + '" data-go="' + e.id + '">' +
+            (istKapitel ? '<span class="dot"></span>' : '<span class="dot" style="background:transparent"></span>') +
+            '<span class="lbl">' + e.nav + "</span></button>";
+  });
+  nav.innerHTML = html;
+
+  Array.prototype.forEach.call(nav.querySelectorAll("[data-go]"), function(b){
+    b.addEventListener("click", function(){
+      zeige(b.getAttribute("data-go"));
+      menuSchliessen();
+    });
+  });
+  fortschrittAktualisieren();
+}
+
+function fortschrittAktualisieren(){
+  var gesamt = CHAPTERS.length;
+  var fertig = CHAPTERS.filter(function(c){ return state.read[c.id]; }).length;
+  document.getElementById("progFill").style.width = (gesamt ? Math.round(fertig / gesamt * 100) : 0) + "%";
+  document.getElementById("progTxt").textContent = fertig + "/" + gesamt;
+}
+
+/* ---- Ansichten ---- */
+function zeige(id){
+  state.view = id;
+  var main = document.getElementById("main");
+  main.innerHTML = "";
+
+  var kap = CHAPTERS.filter(function(c){ return c.id === id; })[0];
+  if (kap) { kapitelZeichnen(main, kap); }
+  else if (id === "befehle")   { befehleZeichnen(main); }
+  else if (id === "quiz")      { quizZeichnen(main); }
+  else if (id === "quellen")   { quellenZeichnen(main); }
+  else if (id === "impressum") { impressumZeichnen(main); }
+
+  navBauen();
+  window.scrollTo(0, 0);
+  try { location.hash = id; } catch(e) {}
+}
+
+function kapitelZeichnen(main, kap){
+  var idx  = CHAPTERS.indexOf(kap);
+  var prev = CHAPTERS[idx - 1];
+  var next = CHAPTERS[idx + 1];
+
+  var wrap = document.createElement("div");
+  wrap.className = "view on";
+  wrap.innerHTML =
+    '<div class="eyebrow">' + kap.grp + " · Kapitel " + (idx + 1) + " von " + CHAPTERS.length + "</div>" +
+    "<h2>" + kap.title + "</h2>" +
+    '<div class="lede">' + kap.lede + "</div>" +
+    kap.html +
+    '<div class="pager">' +
+      '<label class="readtoggle"><input type="checkbox" id="gelesen"' + (state.read[kap.id] ? " checked" : "") + "> Kapitel verstanden</label>" +
+      '<div class="spacer" style="flex:1"></div>' +
+      (prev ? '<button class="btn ghost" data-nav="' + prev.id + '">Zurück</button>' : "") +
+      (next ? '<button class="btn" data-nav="' + next.id + '">Weiter</button>' : '<button class="btn" data-nav="quiz">Zum Wissenstest</button>') +
+    "</div>";
+  main.appendChild(wrap);
+
+  termsAufbauen(wrap);
+
+  wrap.querySelector("#gelesen").addEventListener("change", function(e){
+    if (e.target.checked) { state.read[kap.id] = 1; } else { delete state.read[kap.id]; }
+    speichern();
+    navBauen();
+  });
+  Array.prototype.forEach.call(wrap.querySelectorAll("[data-nav]"), function(b){
+    b.addEventListener("click", function(){ zeige(b.getAttribute("data-nav")); });
+  });
+}
+
+/* ---- Befehlssuche ---- */
+function befehleZeichnen(main){
+  var wrap = document.createElement("div");
+  wrap.className = "view on";
+  wrap.innerHTML =
+    '<div class="eyebrow">Nachschlagen</div>' +
+    "<h2>Befehlssuche</h2>" +
+    '<div class="lede">' + ALL_CMDS.length + " Befehle aus allen drei Welten, nach Bereichen sortiert. Suchbar nach Namen, Beschreibung und Beispiel - auch nach dem, was ein Befehl tut.</div>" +
+    '<div class="searchbar"><input type="search" id="suchfeld" placeholder="z. B. gruppe, port, kennwort, robocopy" autocomplete="off" spellcheck="false"></div>' +
+    '<div class="chips" id="filterchips"></div>' +
+    '<div class="counter" id="trefferzahl"></div>' +
+    '<div id="trefferliste"></div>';
+  main.appendChild(wrap);
+
+  var chips = [["alle","Alle"],["cmd","Eingabeaufforderung"],["ps","PowerShell"],["ad","Active Directory"]];
+  var cbox = wrap.querySelector("#filterchips");
+  cbox.innerHTML = chips.map(function(c){
+    return '<button class="chip' + (state.filter === c[0] ? " on" : "") + '" data-f="' + c[0] + '">' + c[1] + "</button>";
+  }).join("");
+  Array.prototype.forEach.call(cbox.querySelectorAll("[data-f]"), function(b){
+    b.addEventListener("click", function(){
+      state.filter = b.getAttribute("data-f");
+      Array.prototype.forEach.call(cbox.querySelectorAll(".chip"), function(x){ x.classList.remove("on"); });
+      b.classList.add("on");
+      trefferZeichnen();
+    });
+  });
+
+  var feld = wrap.querySelector("#suchfeld");
+  feld.value = state.suche;
+  feld.addEventListener("input", function(){
+    state.suche = feld.value;
+    trefferZeichnen();
+  });
+
+  trefferZeichnen();
+}
+
+function trefferZeichnen(){
+  var liste = document.getElementById("trefferliste");
+  var zahl  = document.getElementById("trefferzahl");
+  if (!liste) { return; }
+
+  var q = state.suche.toLowerCase().trim();
+  var treffer = ALL_CMDS.filter(function(c){
+    if (state.filter !== "alle" && c.s !== state.filter) { return false; }
+    if (!q) { return true; }
+    return (c.n + " " + c.short + " " + c.desc + " " + c.ex + " " + c.rel + " " + c.k).toLowerCase().indexOf(q) > -1;
+  });
+
+  zahl.textContent = treffer.length + " von " + ALL_CMDS.length + " Befehlen";
+
+  if (!treffer.length) {
+    liste.innerHTML = '<div class="card">Kein Treffer. Andere Schreibweise oder allgemeineren Begriff versuchen - die Suche greift auch auf Beschreibungen und Beispiele zu.</div>';
+    return;
+  }
+
+  var html = "";
+  var letzte = null;
+  treffer.forEach(function(c, i){
+    var kopf = c.label + " · " + c.k;
+    if (kopf !== letzte) {
+      html += '<div class="catline">' + kopf + "</div>";
+      letzte = kopf;
+    }
+    html +=
+      '<div class="cmdrow s-' + c.s + '" data-i="' + i + '">' +
+        '<button type="button"><span class="name">' + esc(c.n) + '</span><span class="short">' + esc(c.short) + "</span></button>" +
+        '<div class="body">' +
+          "<p>" + esc(c.desc) + "</p>" +
+          (c.ex ? '<div class="ex">' + esc(c.ex) + "</div>" : "") +
+          (c.rel ? '<div class="rel">' + esc(c.rel) + "</div>" : "") +
+        "</div>" +
+      "</div>";
+  });
+  liste.innerHTML = html;
+
+  Array.prototype.forEach.call(liste.querySelectorAll(".cmdrow > button"), function(b){
+    b.addEventListener("click", function(){ b.parentNode.classList.toggle("open"); });
+  });
+}
+
+/* ---- Wissenstest ---- */
+function mischen(arr){
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+var quizReihe = null;
+
+function quizZeichnen(main){
+  if (!quizReihe) { quizReihe = mischen(QUIZ); }
+  state.quizRichtig = 0;
+  state.quizBeantwortet = 0;
+  var wrap = document.createElement("div");
+  wrap.className = "view on";
+  wrap.innerHTML =
+    '<div class="eyebrow">Nachschlagen</div>' +
+    "<h2>Wissenstest</h2>" +
+    '<div class="lede">' + QUIZ.length + " Fragen zu allen drei Themen, in zufälliger Reihenfolge. Nach jeder Antwort erscheint die Begründung - die ist wichtiger als die Punktzahl.</div>" +
+    '<div class="scorebox" id="score"></div>' +
+    '<div id="fragen"></div>' +
+    '<div class="pager"><button class="btn ghost" id="neustart">Neu mischen</button></div>';
+  main.appendChild(wrap);
+
+  wrap.querySelector("#neustart").addEventListener("click", function(){
+    quizReihe = mischen(QUIZ);
+    state.quizRichtig = 0;
+    state.quizBeantwortet = 0;
+    zeige("quiz");
+  });
+
+  var box = wrap.querySelector("#fragen");
+  quizReihe.forEach(function(f, i){
+    var div = document.createElement("div");
+    div.className = "q";
+    div.innerHTML =
+      '<div class="qtext">' + (i + 1) + ". " + esc(f[0]) + ' <span style="color:var(--ink-faint);font-weight:400;font-size:.82rem">(' + f[4] + ")</span></div>" +
+      f[1].map(function(o, j){ return '<button class="opt" data-j="' + j + '">' + esc(o) + "</button>"; }).join("") +
+      '<div class="expl"><strong>' + esc(f[1][f[2]]) + "</strong><br>" + esc(f[3]) + "</div>";
+    box.appendChild(div);
+
+    Array.prototype.forEach.call(div.querySelectorAll(".opt"), function(b){
+      b.addEventListener("click", function(){
+        var gewaehlt = parseInt(b.getAttribute("data-j"), 10);
+        Array.prototype.forEach.call(div.querySelectorAll(".opt"), function(x, xi){
+          x.disabled = true;
+          if (xi === f[2]) { x.classList.add("right"); }
+          else if (xi === gewaehlt) { x.classList.add("wrong"); }
+        });
+        div.querySelector(".expl").classList.add("on");
+        state.quizBeantwortet++;
+        if (gewaehlt === f[2]) { state.quizRichtig++; }
+        punkteAktualisieren();
+      });
+    });
+  });
+  punkteAktualisieren();
+}
+
+function punkteAktualisieren(){
+  var el = document.getElementById("score");
+  if (!el) { return; }
+  var quote = state.quizBeantwortet ? Math.round(state.quizRichtig / state.quizBeantwortet * 100) : 0;
+  el.textContent = state.quizBeantwortet + " beantwortet · " + state.quizRichtig + " richtig · " + quote + " %";
+}
+
+/* ---- Quellen ---- */
+function quellenZeichnen(main){
+  var wrap = document.createElement("div");
+  wrap.className = "view on";
+  wrap.innerHTML =
+    '<div class="eyebrow">Nachschlagen</div>' +
+    "<h2>Quellen und Weiterlesen</h2>" +
+    '<div class="lede">Die Inhalte dieser App orientieren sich an der Dokumentation des Herstellers. Im Zweifel gilt immer die Primärquelle - Windows-Befehle und AD-Merkmale ändern sich mit jeder Serverversion.</div>' +
+    QUELLEN.map(function(q){
+      return '<a class="src" href="' + q[1] + '" target="_blank" rel="noopener noreferrer">' +
+             '<div class="t">' + q[0] + "</div>" +
+             '<div class="d">' + q[2] + "</div>" +
+             '<div class="u">' + q[1] + "</div></a>";
+    }).join("") +
+    '<div class="note warn"><b>Hinweis zur Aktualität</b>Versionsangaben, Standardwerte und Befehlsumfang unterscheiden sich zwischen Windows-Versionen. Auf dem eigenen System gilt immer das, was <code>befehl /?</code> beziehungsweise <code>Get-Help</code> ausgibt.</div>';
+  main.appendChild(wrap);
+}
+
+/* ---- Impressum ---- */
+function impressumZeichnen(main){
+  var wrap = document.createElement("div");
+  wrap.className = "view on";
+  wrap.innerHTML =
+    '<div class="eyebrow">Rechtliches</div>' +
+    "<h2>Impressum</h2>" +
+
+    "<h3>Diensteanbieter</h3>" +
+    '<p style="color:var(--ink-dim);font-size:.9rem">Angaben gemäß § 5 Digitale-Dienste-Gesetz (DDG)</p>' +
+    '<div class="card legal"><dl style="margin:0">' +
+      "<dt>Name</dt><dd>" + LEGAL.name + "</dd>" +
+      "<dt>Anschrift</dt><dd>" + LEGAL.street + "<br>" + LEGAL.city + "<br>" + LEGAL.country + "</dd>" +
+      '<dt>E-Mail</dt><dd><a href="mailto:' + LEGAL.email + '">' + LEGAL.email + "</a></dd>" +
+    "</dl></div>" +
+
+    "<h3>Spenden</h3>" +
+    "<p>Diese Lern-App ist kostenlos und wird in der Freizeit gepflegt. Wer die Arbeit unterstützen möchte, kann freiwillig und ohne Gegenleistung etwas beitragen. Aus der Spende entsteht kein Anspruch auf Nutzung, Support oder Weiterentwicklung.</p>" +
+    '<a class="paypal" href="' + LEGAL.paypal + '" target="_blank" rel="noopener noreferrer">Mit PayPal unterstützen</a>' +
+    '<div class="u" style="font-family:var(--mono);font-size:.74rem;color:var(--ink-faint);word-break:break-all">' + LEGAL.paypal + "</div>" +
+
+    "<h3>Daten</h3>" +
+    "<p>Diese Anwendung ist eine einzelne HTML-Datei ohne Server im Hintergrund. Gespeichert wird ausschließlich der Lernfortschritt - also welche Kapitel als verstanden markiert wurden - im <code>localStorage</code> des Browsers auf dem eigenen Gerät. Es werden keine Cookies gesetzt, keine Zugriffe protokolliert, keine Daten übertragen und keine Analysedienste eingebunden. Wer den Browserspeicher leert, löscht damit auch den Fortschritt.</p>" +
+
+    "<h3>Schriften</h3>" +
+    "<p>Es werden keine externen Schriftarten geladen. Die Anwendung verwendet ausschließlich die auf dem Gerät vorhandenen Systemschriften, sodass beim Öffnen keine Verbindung zu Dritten entsteht.</p>" +
+
+    "<h3>Inhalte</h3>" +
+    "<p>Die Inhalte wurden sorgfältig erstellt, orientieren sich an der Herstellerdokumentation und erheben dennoch keinen Anspruch auf Richtigkeit, Vollständigkeit oder Aktualität. Befehle wirken unmittelbar auf Systeme und Verzeichnisdienste. Sie sollten zuerst in einer Testumgebung ausprobiert werden. Für Schäden aus der Anwendung der hier gezeigten Befehle wird keine Haftung übernommen.</p>" +
+
+    "<h3>Marken</h3>" +
+    "<p>Windows, Windows Server, PowerShell, Active Directory, Microsoft Learn und weitere genannte Bezeichnungen sind Marken der Microsoft Corporation. Diese Anwendung steht in keiner Verbindung zur Microsoft Corporation und ist von dieser weder geprüft noch autorisiert oder gesponsert.</p>" +
+
+    "<h3>Haftung für Links</h3>" +
+    "<p>Die Anwendung verweist auf externe Websites, auf deren Inhalte kein Einfluss besteht. Für diese fremden Inhalte wird keine Gewähr übernommen; verantwortlich ist stets der jeweilige Anbieter. Zum Zeitpunkt der Verlinkung waren keine Rechtsverstöße erkennbar.</p>";
+  main.appendChild(wrap);
+}
+
+/* ---- PWA: Symbol und Manifest ---- */
+(function pwa(){
+  var svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">' +
+    '<rect width="512" height="512" rx="104" fill="#06121a"/>' +
+    '<rect x="52" y="52" width="408" height="408" rx="72" fill="none" stroke="#164254" stroke-width="10"/>' +
+    '<path d="M150 196 L226 256 L150 316" fill="none" stroke="#2dd4bf" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<rect x="258" y="300" width="116" height="26" rx="13" fill="#6ea8fe"/>' +
+    "</svg>";
+  var icon = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+
+  var apple = document.createElement("link");
+  apple.rel = "apple-touch-icon";
+  apple.href = icon;
+  document.head.appendChild(apple);
+
+  var fav = document.createElement("link");
+  fav.rel = "icon";
+  fav.type = "image/svg+xml";
+  fav.href = icon;
+  document.head.appendChild(fav);
+
+  try {
+    var manifest = {
+      name: "Konsole & Verzeichnis",
+      short_name: "Konsole",
+      start_url: ".",
+      display: "standalone",
+      background_color: "#06121a",
+      theme_color: "#06121a",
+      description: "Lern-App für Windows CMD, PowerShell und Active Directory",
+      icons: [
+        { src: icon, sizes: "512x512", type: "image/svg+xml", purpose: "any" },
+        { src: icon, sizes: "192x192", type: "image/svg+xml", purpose: "maskable" }
+      ]
+    };
+    var blob = new Blob([JSON.stringify(manifest)], {type:"application/manifest+json"});
+    var m = document.createElement("link");
+    m.rel = "manifest";
+    m.href = URL.createObjectURL(blob);
+    document.head.appendChild(m);
+  } catch(e) {}
+
+  var meta = document.createElement("meta");
+  meta.name = "apple-mobile-web-app-capable";
+  meta.content = "yes";
+  document.head.appendChild(meta);
+})();
+
+/* ---- Menü auf kleinen Bildschirmen ---- */
+function menuSchliessen(){
+  document.getElementById("sideNav").classList.remove("open");
+  document.getElementById("scrim").classList.remove("on");
+}
+document.getElementById("menuBtn").addEventListener("click", function(){
+  document.getElementById("sideNav").classList.toggle("open");
+  document.getElementById("scrim").classList.toggle("on");
+});
+document.getElementById("scrim").addEventListener("click", menuSchliessen);
+
+/* ---- Start ---- */
+var startId = (location.hash || "").replace("#", "");
+var gueltig = CHAPTERS.some(function(c){ return c.id === startId; }) ||
+              EXTRA_VIEWS.some(function(v){ return v.id === startId; });
+zeige(gueltig ? startId : "start");
+</script>
+</body>
+</html>
