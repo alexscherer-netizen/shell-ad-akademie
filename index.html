@@ -206,6 +206,22 @@ td code{white-space:normal}
 .catline{font-family:var(--mono);font-size:.72rem;color:var(--ink-faint);
   margin:1.4rem 0 .5rem;border-bottom:1px solid var(--line-soft);padding-bottom:.25rem}
 
+/* ---------- Cmdlet-Katalog ---------- */
+.selwrap{margin:0 0 .3rem}
+.selwrap select{
+  width:100%;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  color:var(--ink);font:inherit;font-size:.9rem;padding:.55rem .7rem;font-family:var(--mono);
+}
+.cmdlet{display:flex;gap:.7rem;align-items:baseline;padding:.42rem .2rem;border-bottom:1px solid var(--line-soft)}
+.cmdlet:last-child{border-bottom:0}
+.cmdlet .cn{font-family:var(--mono);font-size:.84rem;color:#a8c9ff;flex:0 0 auto}
+.cmdlet .cd{font-size:.85rem;color:var(--ink-dim);flex:1;min-width:0}
+@media(max-width:620px){
+  .cmdlet{display:block;padding:.5rem .2rem}
+  .cmdlet .cn{display:block}
+  .cmdlet .cd{display:block;margin-top:.15rem}
+}
+
 /* ---------- Quiz ---------- */
 .q{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:1rem;margin-bottom:.9rem}
 .q .qtext{font-weight:500;margin-bottom:.75rem;color:#eafcf8}
@@ -508,6 +524,12 @@ var PS_DB = [
 ["Enable-PSRemoting","Remoting","Aktiviert PowerShell-Remoting","Richtet den WinRM-Dienst ein, setzt den Starttyp und legt die Firewallregel an. In der Domäne meist per Gruppenrichtlinie ausgerollt.","Enable-PSRemoting -Force",""],
 ["Get-Credential","Remoting","Fragt Anmeldedaten sicher ab","Das Kennwort landet als SecureString im Speicher, nicht im Klartext im Skript.","$cred = Get-Credential FIRMA\\admin.ms",""],
 ["Get-ExecutionPolicy","Skripting","Zeigt die Skriptausführungsrichtlinie","Restricted verhindert jedes Skript, RemoteSigned verlangt eine Signatur nur für heruntergeladene Skripte und ist der übliche Kompromiss, Unrestricted erlaubt alles. Die Richtlinie ist ein Schutz vor Versehen, keine echte Sicherheitsgrenze.","Get-ExecutionPolicy -List",""],
+["#Requires","Skripting","Erzwingt Voraussetzungen vor dem Start","Wird von PowerShell geprüft, bevor die erste Zeile läuft: Mindestversion, benötigte Module, Administratorrechte. Deutlich besser als ein Abbruch mitten in einer Massenänderung.","#Requires -Version 5.1\n#Requires -Modules ActiveDirectory\n#Requires -RunAsAdministrator","Gehört ganz an den Anfang der .ps1-Datei"],
+["Set-StrictMode","Skripting","Macht Nachlässigkeiten zu Fehlern","Mit -Version Latest meldet PowerShell unbekannte Variablen, fehlende Eigenschaften und falsche Methodenaufrufe. Ein Tippfehler wird damit zum Fehler statt zu einem stillen leeren Wert.","Set-StrictMode -Version Latest",""],
+["ShouldProcess","Skripting","Gibt dem eigenen Skript -WhatIf und -Confirm","Zusammen mit SupportsShouldProcess im CmdletBinding entsteht derselbe Testlauf, den eingebaute Cmdlets bieten - zwei Zeilen Aufwand für einen risikofreien Probelauf.","[CmdletBinding(SupportsShouldProcess)]\nif ($PSCmdlet.ShouldProcess($Konto,'Deaktivieren')) { Disable-ADAccount $Konto }",""],
+["Splatting","Skripting","Parameter als Hashtabelle übergeben","Hält lange Aufrufe lesbar und erlaubt es, einzelne Parameter abhängig von Bedingungen zu ergänzen. Das @-Zeichen vor dem Variablennamen löst die Tabelle in Parameter auf.","$p = @{ Name='Anna'; Enabled=$true }\nNew-ADUser @p","Ersetzt das fehleranfällige Umbrechen mit Gravis-Zeichen"],
+["Invoke-ScriptAnalyzer","Skripting","Prüft Skripte auf Stil- und Sicherheitsprobleme","Aus dem Modul PSScriptAnalyzer. Findet Aliase in Skripten, Klartextkennwörter, fehlende ShouldProcess-Abfragen und nicht genehmigte Verben.","Invoke-ScriptAnalyzer -Path .\\skript.ps1 -Severity Warning,Error","Install-Module PSScriptAnalyzer -Scope CurrentUser"],
+["Export-Clixml","Skripting","Speichert Objekte samt Typinformation","Für Anmeldedaten der übliche Weg: Die Verschlüsselung ist an Benutzer und Rechner gebunden, die Datei ist anderswo wertlos. Import-Clixml liest sie zurück.","Get-Credential | Export-Clixml C:\\Skripte\\dienst.cred.xml\n$cred = Import-Clixml C:\\Skripte\\dienst.cred.xml","Kein Ersatz für ein Kennworttresorsystem, aber besser als Klartext"],
 ["Set-ExecutionPolicy","Skripting","Setzt die Ausführungsrichtlinie","-Scope CurrentUser vermeidet Administratorrechte und systemweite Wirkung.","Set-ExecutionPolicy RemoteSigned -Scope CurrentUser",""],
 ["RemoteSigned","Skripting","Ausführungsrichtlinie: lokal frei, fremd nur signiert","Wert für Set-ExecutionPolicy und der übliche Kompromiss. Lokal erstellte Skripte laufen ohne Signatur, heruntergeladene nur mit gültiger Signatur. Erkannt wird die Herkunft am NTFS-Datenstrom Zone.Identifier, den Windows beim Download anlegt. Standardwert auf Windows Server.","Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser","Fremdes Skript trotzdem freigeben: Unblock-File"],
 ["Unrestricted","Skripting","Ausführungsrichtlinie: alles erlaubt","Führt jedes Skript aus; bei heruntergeladenen Dateien erscheint noch eine Rückfrage, die sich dauerhaft abschalten lässt. Voreinstellung auf Linux und macOS, weil es dort keine Herkunftsmarkierung gibt. Auf Windows-Arbeitsplätzen ungeeignet - für einen Test reicht -Scope Process.","Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process","Sicherere Alternative: RemoteSigned oder ein einmaliges -ExecutionPolicy Bypass"],
@@ -1132,6 +1154,364 @@ Stop-Transcript
 <p>Bei Änderungen an Produktivsystemen ist ein Mitschnitt kein Luxus, sondern die Grundlage dafür, im Zweifel belegen zu können, was gemacht wurde.</p>
 `}
 
+,
+{id:"ps-getcommand", grp:"PowerShell", nav:"Get-Command", title:"Get-Command in ganzer Breite",
+lede:"Ein einziges Cmdlet beantwortet die Frage, die am Anfang jeder Aufgabe steht: Gibt es dafür überhaupt einen Befehl - und wie heißt er?",
+html:`
+<p>Auf einem gewöhnlichen Windows-Arbeitsplatz liefert <code>Get-Command</code> je nach installierten Modulen zwischen 1.500 und 2.500 Einträge, auf einem Domänencontroller deutlich mehr. Diese Menge lernt niemand auswendig. Man lernt stattdessen, sie zu durchsuchen.</p>
+<x-term data-k="ps">
+# Wie viele Befehle kennt diese Sitzung überhaupt?
+(Get-Command).Count
+
+# Aufgeschlüsselt nach Art
+Get-Command | Group-Object CommandType | Sort-Object Count -Descending
+
+# Die zehn Module mit den meisten Befehlen
+Get-Command | Group-Object Source | Sort-Object Count -Descending | Select-Object -First 10
+</x-term>
+
+<h3>Was zurückkommt</h3>
+<p>Get-Command gibt keine Zeichenketten aus, sondern <code>CommandInfo</code>-Objekte. Die vier Spalten der Standardansicht sind nur ein Ausschnitt davon.</p>
+<div class="tblwrap"><table>
+<tr><th>Eigenschaft</th><th>Inhalt</th></tr>
+<tr><td><code>Name</code></td><td>Der Befehlsname, bei Programmen mit Dateiendung</td></tr>
+<tr><td><code>CommandType</code></td><td>Art des Befehls - siehe Tabelle unten</td></tr>
+<tr><td><code>Version</code></td><td>Modulversion, bei Programmen die Dateiversion</td></tr>
+<tr><td><code>Source</code></td><td>Das Modul, aus dem der Befehl stammt, oder der Pfad zur Datei</td></tr>
+<tr><td><code>Parameters</code></td><td>Alle Parameter als Wörterbuch, samt Typ und Aliasen</td></tr>
+<tr><td><code>ParameterSets</code></td><td>Die zulässigen Parameterkombinationen</td></tr>
+<tr><td><code>Definition</code></td><td>Bei Aliasen und Funktionen der dahinterliegende Code</td></tr>
+<tr><td><code>Module</code></td><td>Das Modulobjekt selbst, mit Pfad und exportierten Befehlen</td></tr>
+</table></div>
+<x-term data-k="ps">
+Get-Command Get-Service | Format-List *
+(Get-Command Get-ChildItem).Parameters.Keys
+(Get-Command dir).Definition
+</x-term>
+
+<h3>Die Befehlsarten</h3>
+<div class="tblwrap"><table>
+<tr><th>CommandType</th><th>Was es ist</th><th>Beispiel</th></tr>
+<tr><td><code>Cmdlet</code></td><td>In .NET kompilierter Befehl aus einem Modul</td><td>Get-Service</td></tr>
+<tr><td><code>Function</code></td><td>In PowerShell geschriebener Befehl - aus einem Modul, einem Skript oder dem Profil</td><td>Get-NetIPAddress</td></tr>
+<tr><td><code>Alias</code></td><td>Kurzname, der auf etwas anderes zeigt</td><td>dir, ls, gci</td></tr>
+<tr><td><code>Application</code></td><td>Ausführbare Datei aus dem PATH - jedes klassische Werkzeug</td><td>ping.exe, ipconfig.exe</td></tr>
+<tr><td><code>ExternalScript</code></td><td>Eine .ps1-Datei, die über den PATH erreichbar ist</td><td>wartung.ps1</td></tr>
+<tr><td><code>Filter</code></td><td>Sonderform einer Funktion, die nur den Prozessblock kennt</td><td>selten</td></tr>
+<tr><td><code>Configuration</code></td><td>DSC-Konfiguration</td><td>nur mit DSC</td></tr>
+<tr><td><code>All</code></td><td>Kein eigener Typ, sondern der Sammelwert für die Suche</td><td>-CommandType All</td></tr>
+</table></div>
+<div class="note"><b>Der praktische Nutzen</b>Mit <code>-CommandType Application</code> wird Get-Command zum vollwertigen Ersatz für <code>where.exe</code> - und es findet zusätzlich Aliase und Funktionen, die denselben Namen belegen. Genau daran scheitern sonst Skripte, in denen etwa <code>curl</code> oder <code>where</code> etwas anderes trifft als erwartet.</div>
+<x-term data-k="ps">
+# Wo liegt das echte Programm?
+Get-Command ping -CommandType Application | Select-Object Name, Source
+
+# Alle .exe-Dateien im PATH, die mit net beginnen
+Get-Command net* -CommandType Application
+</x-term>
+
+<h3>Die Parameter</h3>
+<div class="tblwrap"><table>
+<tr><th>Parameter</th><th>Wirkung</th></tr>
+<tr><td><code>-Name</code></td><td>Positionsparameter, Platzhalter erlaubt. <code>Get-Command Get-AD*</code> reicht.</td></tr>
+<tr><td><code>-Verb</code></td><td>Sucht nach dem Tätigkeitsteil: alle Get-, alle Remove-Befehle.</td></tr>
+<tr><td><code>-Noun</code></td><td>Sucht nach dem Gegenstand - meist der nützlichere der beiden.</td></tr>
+<tr><td><code>-Module</code></td><td>Beschränkt auf ein oder mehrere Module. Der erste Griff bei einem unbekannten Modul.</td></tr>
+<tr><td><code>-CommandType</code></td><td>Filtert nach Art, mehrere Werte durch Komma getrennt.</td></tr>
+<tr><td><code>-ParameterName</code></td><td>Findet alle Befehle, die einen bestimmten Parameter besitzen.</td></tr>
+<tr><td><code>-ParameterType</code></td><td>Findet Befehle, die einen bestimmten Objekttyp entgegennehmen - so findet man Pipeline-Partner.</td></tr>
+<tr><td><code>-Syntax</code></td><td>Gibt nur die Aufrufsyntax aus, ohne die Hilfe zu laden. Schnellste Erinnerungsstütze.</td></tr>
+<tr><td><code>-All</code></td><td>Zeigt alle gleichnamigen Befehle statt nur des gewinnenden. Entscheidend bei Namenskonflikten.</td></tr>
+<tr><td><code>-ListImported</code></td><td>Nur das, was bereits geladen ist - ohne das Durchsuchen aller Modulpfade.</td></tr>
+<tr><td><code>-TotalCount</code></td><td>Begrenzt die Anzahl der Treffer.</td></tr>
+<tr><td><code>-ShowCommandInfo</code></td><td>Liefert die Angaben als strukturiertes Objekt für Werkzeuge und Oberflächen.</td></tr>
+<tr><td><code>-UseFuzzyMatching</code></td><td>Findet auch bei Tippfehlern. Erst ab PowerShell 7.</td></tr>
+</table></div>
+
+<h3>Suchmuster, die man wirklich braucht</h3>
+<x-term data-k="ps">
+# Was gibt es rund um einem Gegenstand? Der beste Einstieg überhaupt.
+Get-Command -Noun Service
+Get-Command -Noun NetFirewall*
+
+# Was kann ein unbekanntes Modul?
+Get-Command -Module ActiveDirectory | Sort-Object Noun, Verb
+
+# Welche Befehle ändern etwas? Vor Wartungsarbeiten hilfreich.
+Get-Command -Module NetTCPIP -Verb Set, New, Remove
+
+# Welcher Befehl versteht überhaupt einen Computernamen?
+Get-Command -ParameterName ComputerName | Select-Object Name, Source
+
+# Welcher Befehl nimmt ein Dienstobjekt entgegen? So findet man Pipeline-Partner.
+Get-Command -ParameterType System.ServiceProcess.ServiceController
+
+# Syntax auf die Schnelle, ohne Hilfedateien
+Get-Command New-ADUser -Syntax
+</x-term>
+
+<h3>Namenskonflikte und die Rangfolge</h3>
+<p>Wenn zwei Dinge denselben Namen tragen, gewinnt nicht das Naheliegende, sondern eine feste Reihenfolge:</p>
+<div class="card">
+<pre style="font-family:var(--mono);font-size:.82rem;line-height:1.9;margin:0;overflow-x:auto;color:#cfe7ef">
+ 1. Alias
+ 2. Funktion
+ 3. Cmdlet
+ 4. Externes Programm oder Skript aus dem PATH
+</pre>
+</div>
+<p>Deshalb landet <code>where</code> in Windows PowerShell bei Where-Object und nicht bei <code>where.exe</code>, und deshalb traf <code>curl</code> dort Invoke-WebRequest statt des echten curl. Wer den Konflikt sehen will, nimmt <code>-All</code>; wer ihn umgehen will, schreibt die Dateiendung mit.</p>
+<x-term data-k="ps">
+# Alle Kandidaten in der Reihenfolge ihres Vorrangs
+Get-Command where -All
+
+# Eindeutig das Programm ansprechen
+where.exe ping
+& "$env:SystemRoot\\System32\\where.exe" ping
+</x-term>
+
+<h3>Die Erkundungskette</h3>
+<p>Drei Befehle, immer in derselben Reihenfolge - damit erschließt man jedes fremde Modul ohne Dokumentation:</p>
+<div class="tblwrap"><table>
+<tr><th>Frage</th><th>Befehl</th></tr>
+<tr><td>Gibt es dafür einen Befehl?</td><td><code>Get-Command -Noun ...</code> oder <code>-Module ...</code></td></tr>
+<tr><td>Wie rufe ich ihn auf?</td><td><code>Get-Help &lt;Name&gt; -Examples</code></td></tr>
+<tr><td>Was kommt zurück, und wie geht es weiter?</td><td><code>&lt;Befehl&gt; | Get-Member</code></td></tr>
+</table></div>
+<x-term data-k="ps">
+# Beispiel: Alles über Freigaben herausfinden, ohne etwas nachzuschlagen
+Get-Command -Noun Smb* | Group-Object Noun
+Get-Help Get-SmbShare -Examples
+Get-SmbShare | Get-Member -MemberType Property
+</x-term>
+<div class="note warn"><b>Wenn ein Befehl nicht gefunden wird</b>Drei Ursachen decken fast alle Fälle ab: Das Modul ist nicht installiert (bei AD-Befehlen fehlt meist RSAT), es liegt außerhalb von <code>$env:PSModulePath</code>, oder der Befehl existiert nur in einer der beiden PowerShell-Versionen. <code>Get-Module -ListAvailable</code> und <code>$env:PSModulePath -split ';'</code> klären das in zwei Zeilen.</div>
+`}
+
+,
+{id:"ps-stil", grp:"PowerShell", nav:"Skriptaufbau", title:"Wie ein Skript aufgebaut sein soll",
+lede:"Ein Skript wird einmal geschrieben und danach jahrelang gelesen - meistens von jemand anderem, meistens unter Zeitdruck. Deshalb gibt es für den Aufbau feste Vorgaben.",
+html:`
+<h3>Die Reihenfolge von oben nach unten</h3>
+<p>Jede <code>.ps1</code>-Datei folgt derselben Gliederung. Wer sich daran hält, findet in einem fremden Skript alles dort, wo er es erwartet.</p>
+<div class="card">
+<pre style="font-family:var(--mono);font-size:.8rem;line-height:1.95;margin:0;overflow-x:auto;color:#cfe7ef">
+ 1.  #Requires          Mindestvoraussetzungen - Version, Module, Adminrechte
+ 2.  Kommentarhilfe     &lt;# .SYNOPSIS ... #&gt; direkt vor param
+ 3.  [CmdletBinding()]  schaltet -Verbose, -WhatIf, -ErrorAction frei
+ 4.  param( ... )       ALLE Eingaben, mit Validierung
+ 5.  Set-StrictMode     deckt Tippfehler in Variablennamen auf
+ 6.  begin { }          einmalige Vorbereitung: Module laden, Verbindung aufbauen
+ 7.  process { }        die eigentliche Arbeit, je Pipeline-Objekt
+ 8.  end { }            Zusammenfassung, Aufräumen, Rückgabe
+</pre>
+</div>
+<div class="note"><b>Warum param ganz nach oben gehört</b>PowerShell erlaubt vor dem param-Block nur Kommentare und #Requires. Steht irgendetwas anderes davor - und sei es eine einzige Zuweisung - bricht das Skript mit einem Syntaxfehler ab. Das ist kein Stil, sondern eine Regel der Sprache.</div>
+
+<h3>#Requires: Voraussetzungen erzwingen statt hoffen</h3>
+<p>Diese Zeilen prüft PowerShell, bevor auch nur eine Zeile läuft. Das ist deutlich besser als ein Abbruch mitten in einer Massenänderung.</p>
+<x-term data-k="ps">
+#Requires -Version 5.1
+#Requires -Modules ActiveDirectory, GroupPolicy
+#Requires -RunAsAdministrator
+</x-term>
+
+<h3>Kommentarhilfe: das Skript erklärt sich selbst</h3>
+<p>Ein Block in dieser Form sorgt dafür, dass <code>Get-Help .\\skript.ps1 -Examples</code> funktioniert - genau wie bei einem eingebauten Cmdlet. Das ist der Unterschied zwischen einem Skript, das jemand weiterverwenden kann, und einem, das niemand anzufassen wagt.</p>
+<x-term data-k="ps">
+&lt;#
+.SYNOPSIS
+    Erstellt Benutzerkonten aus einer CSV-Datei.
+
+.DESCRIPTION
+    Liest eine Semikolon-getrennte Liste ein, legt für jede Zeile ein
+    Konto in der passenden Abteilungs-OU an und nimmt es in die
+    zugehörige Rollengruppe auf. Bestehende Konten werden übersprungen.
+
+.PARAMETER Pfad
+    Vollständiger Pfad zur CSV-Datei mit den Spalten
+    Vorname, Nachname, Kuerzel, Abteilung.
+
+.PARAMETER Domaene
+    DNS-Name der Zieldomäne. Standard ist die Domäne des ausführenden Rechners.
+
+.EXAMPLE
+    .\\Neue-Benutzer.ps1 -Pfad C:\\Import\\april.csv -WhatIf
+
+    Zeigt, was angelegt würde, ohne etwas zu ändern.
+
+.NOTES
+    Autor:   A. Scherer
+    Stand:   2026-09
+    Version: 1.2
+#&gt;
+</x-term>
+
+<h3>Der param-Block: Eingaben prüfen, bevor etwas passiert</h3>
+<p>Validierungsattribute sind der wirksamste Schutz gegen Fehlbedienung. Sie greifen, bevor die erste Zeile Code läuft, und liefern eine verständliche Meldung statt eines Folgefehlers zwanzig Zeilen später.</p>
+<x-term data-k="ps">
+param(
+    [Parameter(Mandatory, Position = 0,
+               HelpMessage = 'Pfad zur CSV-Datei')]
+    [ValidateScript({ Test-Path $_ -PathType Leaf })]
+    [string]$Pfad,
+
+    [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+    [ValidateNotNullOrEmpty()]
+    [string[]]$Kuerzel,
+
+    [ValidateSet('Vertrieb', 'IT', 'Buchhaltung', 'Lager')]
+    [string]$Abteilung = 'IT',
+
+    [ValidatePattern('^[a-z]\\.[a-z]+$')]
+    [string]$Namensschema,
+
+    [ValidateRange(1, 500)]
+    [int]$MaxAnzahl = 50,
+
+    [switch]$Protokoll
+)
+</x-term>
+<div class="tblwrap"><table>
+<tr><th>Attribut</th><th>Wirkung</th></tr>
+<tr><td><code>Mandatory</code></td><td>PowerShell fragt nach, wenn der Wert fehlt</td></tr>
+<tr><td><code>ValidateSet</code></td><td>Nur die aufgezählten Werte - und die Tabulatortaste vervollständigt sie</td></tr>
+<tr><td><code>ValidateRange</code></td><td>Zahlenbereich begrenzen</td></tr>
+<tr><td><code>ValidatePattern</code></td><td>Prüfung gegen einen regulären Ausdruck</td></tr>
+<tr><td><code>ValidateScript</code></td><td>Beliebige eigene Prüfung, etwa ob eine Datei existiert</td></tr>
+<tr><td><code>ValidateNotNullOrEmpty</code></td><td>Leere Werte abweisen</td></tr>
+<tr><td><code>ValueFromPipeline</code></td><td>Der Parameter nimmt Objekte aus der Pipeline entgegen</td></tr>
+<tr><td><code>[switch]</code></td><td>Schalter ohne Wert, entweder gesetzt oder nicht</td></tr>
+</table></div>
+
+<h3>ShouldProcess: -WhatIf und -Confirm für eigene Skripte</h3>
+<p>Alles, was löscht, ändert oder anlegt, gehört in eine ShouldProcess-Abfrage. Der Aufwand sind zwei Zeilen, der Gewinn ist ein Testlauf ohne Risiko - dieselbe Sicherheit, die die eingebauten Cmdlets bieten.</p>
+<x-term data-k="ps">
+[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+param(
+    [Parameter(Mandatory)][string]$Konto
+)
+
+if ($PSCmdlet.ShouldProcess($Konto, 'Konto deaktivieren')) {
+    Disable-ADAccount -Identity $Konto -ErrorAction Stop
+}
+</x-term>
+<p>Ein Aufruf mit <code>-WhatIf</code> gibt danach von selbst aus, was geschehen würde. Ohne diese Konstruktion muss man die Testlogik von Hand nachbauen - und vergisst sie erfahrungsgemäß genau dort, wo sie gebraucht würde.</p>
+
+<h3>Fehlerbehandlung, die wirklich greift</h3>
+<x-term data-k="ps">
+Set-StrictMode -Version Latest
+
+try {
+    $benutzer = Get-ADUser -Identity $Konto -ErrorAction Stop
+}
+catch [Microsoft.ActiveDirectory.Management.ADIdentityNotFoundException] {
+    Write-Warning "Konto $Konto existiert nicht - übersprungen."
+    return
+}
+catch {
+    Write-Error "Unerwarteter Fehler bei $Konto : $($_.Exception.Message)"
+    throw
+}
+finally {
+    Write-Verbose 'Aufräumen abgeschlossen.'
+}
+</x-term>
+<ul>
+<li><code>Set-StrictMode -Version Latest</code> meldet unbekannte Variablen. Ein Tippfehler wird damit zum Fehler statt zu einem stillen leeren Wert - die Ursache unzähliger Skripte, die scheinbar durchlaufen und nichts tun.</li>
+<li><code>-ErrorAction Stop</code> an jedem kritischen Aufruf. Ohne das erreicht der catch-Block die meisten Fehler nie.</li>
+<li>Spezifische catch-Blöcke vor dem allgemeinen. Ein nicht gefundenes Konto behandelt man anders als einen Netzwerkausfall.</li>
+<li><code>finally</code> läuft immer - der richtige Ort für Verbindungen schließen und Dateien freigeben.</li>
+<li><code>$ErrorActionPreference = 'Stop'</code> am Skriptanfang setzt das global. Bequem, aber es ändert auch das Verhalten aller aufgerufenen Befehle - bewusst einsetzen.</li>
+</ul>
+
+<h3>Formvorgaben, auf die man sich geeinigt hat</h3>
+<div class="tblwrap"><table>
+<tr><th>Regel</th><th>Warum</th></tr>
+<tr><td>Cmdlets ausschreiben, keine Aliase</td><td><code>Get-ChildItem</code> statt <code>gci</code> - Aliase können überschrieben sein und lesen sich für Dritte schlechter</td></tr>
+<tr><td>Parameter ausschreiben</td><td><code>-Recurse</code> statt <code>-r</code>; Kurzformen brechen, sobald ein neuer Parameter dazukommt</td></tr>
+<tr><td>Vier Leerzeichen einrücken, keine Tabulatoren</td><td>Einheitliche Darstellung in jedem Editor</td></tr>
+<tr><td>Öffnende Klammer in derselben Zeile</td><td>Bei <code>if</code> und <code>foreach</code> zwingend, sonst gilt der Block als eigenständiger Ausdruck</td></tr>
+<tr><td>PascalCase für Parameter und Funktionen</td><td><code>$MaxAnzahl</code>, <code>Get-BenutzerListe</code></td></tr>
+<tr><td>Sprechende Variablennamen</td><td><code>$inaktiveKonten</code> statt <code>$x</code> oder <code>$temp</code></td></tr>
+<tr><td>Kein Gravis-Zeichen zum Umbrechen</td><td>Ein unsichtbares Leerzeichen dahinter bricht das Skript. Stattdessen nach Pipe, Komma oder im Splatting umbrechen</td></tr>
+<tr><td>Nur genehmigte Verben</td><td><code>Get-Verb</code> liefert die Liste; fremde Verben lösen beim Modulimport eine Warnung aus</td></tr>
+<tr><td>Eine Aufgabe je Funktion</td><td>Was mehr als einen Zweck hat, gehört aufgeteilt</td></tr>
+<tr><td>Ausgabe per Write-Output</td><td><code>Write-Host</code> schreibt am Rückgabewert vorbei und lässt sich nicht weiterverarbeiten</td></tr>
+</table></div>
+
+<h3>Splatting statt endloser Zeilen</h3>
+<x-term data-k="ps">
+# Schwer lesbar und kaum erweiterbar
+New-ADUser -Name "Anna Berger" -GivenName Anna -Surname Berger -SamAccountName a.berger -UserPrincipalName a.berger@firma.local -Path "OU=Vertrieb,DC=firma,DC=local" -Enabled $true
+
+# Splatting: übersichtlich, und Parameter lassen sich bedingt ergänzen
+$neuerBenutzer = @{
+    Name              = 'Anna Berger'
+    GivenName         = 'Anna'
+    Surname           = 'Berger'
+    SamAccountName    = 'a.berger'
+    UserPrincipalName = 'a.berger@firma.local'
+    Path              = 'OU=Vertrieb,DC=firma,DC=local'
+    Enabled           = $true
+}
+if ($Abteilung) { $neuerBenutzer.Department = $Abteilung }
+
+New-ADUser @neuerBenutzer -ErrorAction Stop
+</x-term>
+
+<h3>Die drei Blöcke bei Pipeline-Eingabe</h3>
+<p>Sobald ein Skript oder eine Funktion Objekte aus der Pipeline entgegennimmt, braucht es die Aufteilung. Ohne <code>process</code> verarbeitet die Funktion nur das letzte durchgereichte Objekt - ein Fehler, der lange unbemerkt bleibt, weil bei einem einzelnen Objekt alles stimmt.</p>
+<x-term data-k="ps">
+function Get-KontoBericht {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, ValueFromPipeline)]
+        [string[]]$SamAccountName
+    )
+
+    begin {
+        Import-Module ActiveDirectory
+        $ergebnis = [System.Collections.Generic.List[object]]::new()
+        Write-Verbose 'Start der Auswertung'
+    }
+
+    process {
+        foreach ($konto in $SamAccountName) {
+            try {
+                $u = Get-ADUser $konto -Properties Department, LastLogonDate -ErrorAction Stop
+                $ergebnis.Add([PSCustomObject]@{
+                    Konto     = $u.SamAccountName
+                    Name      = $u.Name
+                    Abteilung = $u.Department
+                    LetzteAnmeldung = $u.LastLogonDate
+                })
+            }
+            catch {
+                Write-Warning "Übersprungen: $konto"
+            }
+        }
+    }
+
+    end {
+        Write-Verbose "$($ergebnis.Count) Konten ausgewertet"
+        $ergebnis
+    }
+}
+</x-term>
+<div class="note warn"><b>Objekte zurückgeben, nicht Text</b>Eine Funktion sollte <code>[PSCustomObject]</code> ausgeben, nie fertig formatierten Text. Nur dann lässt sich das Ergebnis weiterfiltern, sortieren und exportieren. Die Formatierung ist Sache des Aufrufers - nicht der Funktion.</div>
+
+<h3>Vor dem Ausliefern</h3>
+<div class="tblwrap"><table>
+<tr><th>Prüfung</th><th>Womit</th></tr>
+<tr><td>Testlauf ohne Wirkung</td><td><code>-WhatIf</code> bei jedem ändernden Aufruf</td></tr>
+<tr><td>Ausführlicher Durchlauf</td><td><code>-Verbose</code>, um die Zwischenschritte zu sehen</td></tr>
+<tr><td>Stilprüfung</td><td><code>Invoke-ScriptAnalyzer -Path .\\skript.ps1</code> aus dem Modul PSScriptAnalyzer</td></tr>
+<tr><td>Nachweis der Ausführung</td><td><code>Start-Transcript</code> bei Änderungen an Produktivsystemen</td></tr>
+<tr><td>Rückgabewert für Aufrufer</td><td><code>exit 0</code> bei Erfolg, ein anderer Wert bei Fehlern - so kann eine Aufgabenplanung darauf reagieren</td></tr>
+</table></div>
+<div class="note stop"><b>Was niemals in ein Skript gehört</b>Kennwörter im Klartext, auch nicht in einer Variablen und erst recht nicht als Parameterstandard. Skripte landen in Sicherungen, Versionsverwaltungen und Ticketsystemen. Stattdessen <code>Get-Credential</code> abfragen, ein gruppenverwaltetes Dienstkonto verwenden oder die Anmeldedaten benutzergebunden verschlüsselt ablegen.</div>
+`}
+
 );
 
 CHAPTERS.push(
@@ -1456,6 +1836,125 @@ Backup-GPO -All -Path C:\\GPO-Backup
 </table></div>
 `},
 
+{id:"sicherheit", grp:"Anwenden", nav:"Sicherheit &amp; Rechte", title:"Sicherheit im Alltagsbetrieb",
+lede:"Die meisten Sicherheitsvorfälle in Firmennetzen beginnen nicht mit einem raffinierten Angriff, sondern mit einem zu weitreichenden Konto, einem Kennwort im Skript und einem Protokoll, in das nie jemand geschaut hat.",
+html:`
+<h3>Das Prinzip der geringsten Rechte</h3>
+<p>Jedes Konto bekommt genau die Rechte, die es für seine Aufgabe braucht - nicht mehr, und nicht auf Vorrat. In der Praxis heißt das vor allem: getrennte Konten für getrennte Aufgaben.</p>
+<div class="tblwrap"><table>
+<tr><th>Konto</th><th>Zweck</th><th>Womit angemeldet</th></tr>
+<tr><td><code>m.mustermann</code></td><td>Tägliche Arbeit: Mail, Dokumente, Internet</td><td>Am eigenen Arbeitsplatz</td></tr>
+<tr><td><code>adm.mustermann</code></td><td>Serververwaltung</td><td>Nur über <code>runas</code> oder eine Verwaltungssitzung</td></tr>
+<tr><td><code>da.mustermann</code></td><td>Domänenverwaltung</td><td>Nur an einem gesonderten Verwaltungsrechner</td></tr>
+</table></div>
+<p>Der Grund ist nüchtern: Wer mit einem Domänenadministrator-Konto im Internet surft oder eine Mail öffnet, gibt einem Schadprogramm im selben Moment die gesamte Domäne. Genau deshalb sollte sich ein Domänenadmin niemals an einem normalen Arbeitsplatz anmelden - seine Anmeldedaten bleiben sonst auf diesem Rechner angreifbar zurück.</p>
+<x-term data-k="cmd">
+:: Verwaltungskonsole mit dem Adminkonto starten, ohne sich abzumelden
+runas /user:FIRMA\\adm.mustermann "mmc dsa.msc"
+</x-term>
+<x-term data-k="ps">
+# Erhöhte PowerShell starten
+Start-Process powershell -Verb RunAs
+
+# Prüfen, ob die aktuelle Sitzung erhöht läuft
+([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+    [Security.Principal.WindowsBuiltInRole]::Administrator)
+</x-term>
+
+<h3>Die Gruppen, die man im Blick behalten muss</h3>
+<div class="tblwrap"><table>
+<tr><th>Gruppe</th><th>Reichweite</th><th>Anmerkung</th></tr>
+<tr><td>Schema-Admins</td><td>Gesamtstruktur</td><td>Sollte im Normalbetrieb leer sein - nur für Schemaerweiterungen befüllen</td></tr>
+<tr><td>Organisations-Admins</td><td>Gesamtstruktur</td><td>Nur das eingebaute Administratorkonto der Stammdomäne gehört hier hinein</td></tr>
+<tr><td>Domänen-Admins</td><td>Domäne</td><td>Die kleinste vertretbare Anzahl, jedes Mitglied namentlich begründet</td></tr>
+<tr><td>Administratoren</td><td>Domäne</td><td>Enthält die beiden vorigen - wird beim Prüfen gern übersehen</td></tr>
+<tr><td>Konten-Operatoren</td><td>Domäne</td><td>Gilt als kritisch, weil Mitglieder Konten verändern können. Besser leer lassen und stattdessen delegieren</td></tr>
+<tr><td>Geschützte Benutzer</td><td>Domäne</td><td>Schutzgruppe: Mitglieder können nur Kerberos nutzen, ihre Anmeldedaten werden nicht zwischengespeichert</td></tr>
+</table></div>
+<x-term data-k="ps">
+# Wer steckt tatsächlich in den privilegierten Gruppen, auch verschachtelt?
+'Schema-Admins','Organisations-Admins','Domänen-Admins','Administratoren' | ForEach-Object {
+    $gruppe = $_
+    Get-ADGroupMember $gruppe -Recursive -ErrorAction SilentlyContinue |
+        Select-Object @{n='Gruppe'; e={$gruppe}}, Name, SamAccountName, objectClass
+}
+</x-term>
+<div class="note"><b>Delegieren statt befördern</b>Wenn der Helpdesk nur Kennwörter zurücksetzen und Konten entsperren soll, gehört er nicht in die Domänen-Admins. In der Verwaltungskonsole übernimmt das der Assistent zum Zuweisen der Objektverwaltung, gebunden an eine OU und eine einzige Aufgabe. Das ist der eigentliche Zweck der OU-Struktur.</div>
+
+<h3>Anmeldedaten in Skripten</h3>
+<x-term data-k="ps">
+# Richtig: abfragen und nur im Arbeitsspeicher halten
+$cred = Get-Credential FIRMA\\adm.mustermann
+Get-ADUser -Filter * -Credential $cred
+
+# Für wiederkehrende Aufgaben: benutzer- und rechnergebunden verschlüsselt ablegen
+$cred | Export-Clixml -Path C:\\Skripte\\dienst.cred.xml
+$cred = Import-Clixml -Path C:\\Skripte\\dienst.cred.xml
+</x-term>
+<p>Die Datei aus <code>Export-Clixml</code> ist über die Windows-Datenschutz-API an <em>genau dieses</em> Benutzerkonto auf <em>genau diesem</em> Rechner gebunden. Kopiert jemand sie weg, ist sie wertlos. Das ist kein Ersatz für ein Kennworttresorsystem, aber deutlich besser als Klartext - und für geplante Aufgaben oft die praktikabelste Lösung.</p>
+<div class="note stop"><b>Was trotzdem falsch bleibt</b>Ein SecureString schützt nicht vor jemandem, der den Code liest: <code>ConvertTo-SecureString 'Sommer2026!' -AsPlainText -Force</code> steht genauso im Klartext in der Datei wie vorher. Die saubere Lösung für Dienste ist ein gruppenverwaltetes Dienstkonto - dort verwaltet Active Directory das Kennwort selbst und wechselt es automatisch.</div>
+<x-term data-k="ps">
+# Gruppenverwaltetes Dienstkonto einrichten und prüfen
+New-ADServiceAccount -Name gmsa-backup -DNSHostName gmsa-backup.firma.local -PrincipalsAllowedToRetrieveManagedPassword 'G-Backupserver'
+Install-ADServiceAccount -Identity gmsa-backup
+Test-ADServiceAccount -Identity gmsa-backup
+</x-term>
+
+<h3>Nachvollziehbarkeit: die Ereignis-IDs, die zählen</h3>
+<div class="tblwrap"><table>
+<tr><th>ID</th><th>Bedeutung</th><th>Wofür man sie braucht</th></tr>
+<tr><td>4624</td><td>Anmeldung erfolgreich</td><td>Wer war wann auf welchem System - der Anmeldetyp verrät, ob lokal, über Netz oder per RDP</td></tr>
+<tr><td>4625</td><td>Anmeldung fehlgeschlagen</td><td>Häufung deutet auf falsch gespeicherte Kennwörter oder einen Angriffsversuch</td></tr>
+<tr><td>4634 / 4647</td><td>Abmeldung</td><td>Sitzungsdauer nachvollziehen</td></tr>
+<tr><td>4648</td><td>Anmeldung mit ausdrücklichen Anmeldedaten</td><td>Zeigt <code>runas</code>-Vorgänge und damit Rechteausweitung</td></tr>
+<tr><td>4720</td><td>Benutzerkonto erstellt</td><td>Unerwartete neue Konten sind ein Alarmzeichen</td></tr>
+<tr><td>4726</td><td>Benutzerkonto gelöscht</td><td>Nachvollzug beim Austrittsprozess</td></tr>
+<tr><td>4728 / 4732 / 4756</td><td>Mitglied zu globaler, lokaler bzw. universeller Gruppe hinzugefügt</td><td>Die wichtigste Meldung überhaupt bei privilegierten Gruppen</td></tr>
+<tr><td>4740</td><td>Konto gesperrt</td><td>Ausgangspunkt jeder Sperrungsanalyse - steht auf dem PDC-Emulator</td></tr>
+<tr><td>4768 / 4769 / 4771</td><td>Kerberos: TGT angefordert, Ticket angefordert, Vorauthentifizierung fehlgeschlagen</td><td>4771 zeigt falsche Kennwörter auf Domänenebene</td></tr>
+<tr><td>1102</td><td>Sicherheitsprotokoll geleert</td><td>Passiert im Normalbetrieb nie und gehört immer geprüft</td></tr>
+</table></div>
+<x-term data-k="ps">
+# Fehlgeschlagene Anmeldungen des letzten Tages, nach Konto gezählt
+Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4625; StartTime=(Get-Date).AddDays(-1)} |
+    ForEach-Object { $_.Properties[5].Value } |
+    Group-Object | Sort-Object Count -Descending | Select-Object Count, Name
+
+# Wo wurde ein Konto gesperrt? Auf dem PDC-Emulator nachsehen.
+$pdc = (Get-ADDomain).PDCEmulator
+Get-WinEvent -ComputerName $pdc -FilterHashtable @{LogName='Security'; Id=4740} -MaxEvents 20 |
+    Select-Object TimeCreated, @{n='Konto'; e={$_.Properties[0].Value}}, @{n='Quelle'; e={$_.Properties[1].Value}}
+</x-term>
+
+<h3>PowerShell selbst protokollieren</h3>
+<p>Drei Einstellungen, die per Gruppenrichtlinie ausgerollt werden und im Ernstfall den Unterschied machen:</p>
+<div class="tblwrap"><table>
+<tr><th>Einstellung</th><th>Was aufgezeichnet wird</th><th>Ereignis-ID</th></tr>
+<tr><td>Skriptblockprotokollierung</td><td>Der tatsächlich ausgeführte Code, auch wenn er verschleiert war</td><td>4104</td></tr>
+<tr><td>Modulprotokollierung</td><td>Aufgerufene Befehle samt Parametern</td><td>4103</td></tr>
+<tr><td>Transkription</td><td>Vollständiger Mitschnitt jeder Sitzung in Textdateien</td><td>-</td></tr>
+</table></div>
+<x-term data-k="ps">
+# Für die eigene Arbeit an einem Produktivsystem: immer mitschneiden
+Start-Transcript -Path "C:\\Protokoll\\$env:USERNAME-$(Get-Date -f yyyyMMdd-HHmm).txt"
+# ... Änderungen ...
+Stop-Transcript
+</x-term>
+
+<h3>Härtung, die schnell erledigt ist</h3>
+<div class="tblwrap"><table>
+<tr><th>Maßnahme</th><th>Warum</th><th>Prüfen mit</th></tr>
+<tr><td>SMBv1 entfernen</td><td>Veraltet, unverschlüsselt, Einfallstor bekannter Schadsoftware</td><td><code>Get-SmbServerConfiguration | Select EnableSMB1Protocol</code></td></tr>
+<tr><td>AD-Papierkorb aktivieren</td><td>Macht versehentliches Löschen rückholbar - nicht umkehrbar, aber ohne Nachteil</td><td><code>Get-ADOptionalFeature -Filter *</code></td></tr>
+<tr><td>Löschschutz an OUs</td><td>Verhindert, dass eine ganze Abteilung mit einem Klick verschwindet</td><td>Attribut <code>ProtectedFromAccidentalDeletion</code></td></tr>
+<tr><td>LDAP-Signierung erzwingen</td><td>Verhindert das Mitlesen und Verändern von Verzeichnisabfragen</td><td>Ereignis-ID 2889 auf den Domänencontrollern</td></tr>
+<tr><td>Inaktive Konten abschalten</td><td>Verwaiste Konten sind unbeaufsichtigte Zugänge</td><td><code>Search-ADAccount -AccountInactive</code></td></tr>
+<tr><td>GPO-Sicherung einrichten</td><td>Gruppenrichtlinien haben keine eigene Versionsverwaltung</td><td><code>Backup-GPO -All</code></td></tr>
+<tr><td>Systemstatus der DCs sichern</td><td>Ohne Systemstatussicherung ist ein Verzeichnis nicht wiederherstellbar</td><td>Windows Server-Sicherung</td></tr>
+</table></div>
+<div class="note warn"><b>Ein Satz, der in jede Dokumentation gehört</b>Eine Sicherung, die nie zurückgespielt wurde, ist keine Sicherung, sondern eine Vermutung. Das gilt für Systemstatussicherungen von Domänencontrollern ganz besonders - der Wiederherstellungsweg über den Verzeichnisdienst-Wiederherstellungsmodus will einmal geübt sein, bevor er gebraucht wird.</div>
+`},
+
 {id:"praxis", grp:"Anwenden", nav:"Praxisszenarien", title:"Vier Abläufe von Anfang bis Ende",
 lede:"Jetzt greifen die drei Welten ineinander. Diese Abläufe entsprechen dem, was im ersten Jahr im Betrieb tatsächlich auf dem Tisch landet.",
 html:`
@@ -1552,6 +2051,36 @@ gpresult /h C:\\Doku\\pc042-gpo.html /f
 
 );
 
+
+/* Get-Command-Kapitel direkt hinter die PowerShell-Grundlagen stellen */
+(function(){
+  var i = -1, j = -1, k;
+  for (k = 0; k < CHAPTERS.length; k++) {
+    if (CHAPTERS[k].id === "ps-getcommand") { i = k; }
+    if (CHAPTERS[k].id === "ps-basis") { j = k; }
+  }
+  if (i > -1 && j > -1 && i !== j + 1) {
+    var kap = CHAPTERS.splice(i, 1)[0];
+    for (k = 0; k < CHAPTERS.length; k++) { if (CHAPTERS[k].id === "ps-basis") { j = k; break; } }
+    CHAPTERS.splice(j + 1, 0, kap);
+  }
+})();
+
+
+/* Skriptaufbau-Kapitel hinter das Remoting-Kapitel stellen */
+(function(){
+  var i = -1, j = -1, k;
+  for (k = 0; k < CHAPTERS.length; k++) {
+    if (CHAPTERS[k].id === "ps-stil") { i = k; }
+    if (CHAPTERS[k].id === "ps-skript") { j = k; }
+  }
+  if (i > -1 && j > -1 && i !== j + 1) {
+    var kap = CHAPTERS.splice(i, 1)[0];
+    for (k = 0; k < CHAPTERS.length; k++) { if (CHAPTERS[k].id === "ps-skript") { j = k; break; } }
+    CHAPTERS.splice(j + 1, 0, kap);
+  }
+})();
+
 /* =====================================================================
    WISSENSTEST  [Frage, Optionen, Index der richtigen Antwort, Erklärung, Thema]
    ===================================================================== */
@@ -1607,6 +2136,16 @@ var QUIZ = [
 ["Worin unterscheiden sich RemoteSigned und Unrestricted?",["Gar nicht, nur im Namen","Unter RemoteSigned läuft ein heruntergeladenes Skript nur mit gültiger Signatur, unter Unrestricted nach einer Rückfrage","RemoteSigned erlaubt gar keine Skripte","Unrestricted verlangt immer eine Signatur"],1,"Beide lassen lokale Skripte zu. Der Unterschied betrifft ausschließlich Dateien mit Herkunftsmarkierung - und genau dort liegt der Schutz.","PowerShell"],
 ["Woran erkennt PowerShell, dass ein Skript heruntergeladen wurde?",["Am Dateidatum","Am NTFS-Datenstrom Zone.Identifier","Am Dateinamen","An der Dateigröße"],1,"Windows legt beim Download einen alternativen Datenstrom mit der Herkunftszone an. Unblock-File entfernt ihn wieder.","PowerShell"],
 ["Welcher Bereich der Ausführungsrichtlinie schlägt alle anderen?",["LocalMachine","CurrentUser","MachinePolicy aus der Gruppenrichtlinie","Process"],2,"Die Rangfolge lautet MachinePolicy, UserPolicy, Process, CurrentUser, LocalMachine. Deshalb bleibt Set-ExecutionPolicy wirkungslos, wenn eine GPO etwas vorgibt.","PowerShell"],
+["Was muss in einer .ps1-Datei zwingend vor jeder anderen Anweisung stehen?",["Set-StrictMode","Der param-Block, davor nur Kommentare und #Requires","Import-Module","Die Fehlerbehandlung"],1,"PowerShell erlaubt vor param nur Kommentare und #Requires-Zeilen. Steht etwas anderes davor, bricht das Skript mit einem Syntaxfehler ab.","PowerShell"],
+["Wozu dient [CmdletBinding(SupportsShouldProcess)]?",["Es beschleunigt das Skript","Es schaltet -WhatIf und -Confirm für das eigene Skript frei","Es signiert das Skript","Es lädt Module automatisch"],1,"Zusammen mit $PSCmdlet.ShouldProcess bekommt das eigene Skript denselben Testlauf, den eingebaute Cmdlets bieten.","PowerShell"],
+["Was bewirkt Set-StrictMode -Version Latest?",["Es erzwingt eine Signatur","Unbekannte Variablen und weitere Nachlässigkeiten werden zum Fehler","Es aktiviert die Protokollierung","Es sperrt fremde Module"],1,"Ein Tippfehler im Variablennamen wird damit sofort gemeldet, statt still einen leeren Wert zu liefern - die häufigste Ursache für Skripte, die scheinbar laufen und nichts tun.","PowerShell"],
+["Warum sollte eine Funktion [PSCustomObject] statt formatiertem Text zurückgeben?",["Das sieht schöner aus","Nur Objekte lassen sich weiterfiltern, sortieren und exportieren","Text ist nicht erlaubt","Aus Geschwindigkeitsgründen"],1,"Formatierung ist Sache des Aufrufers. Wer Text zurückgibt, beendet die Pipeline an dieser Stelle.","PowerShell"],
+["Warum gilt das Gravis-Zeichen als Zeilenumbruch in Skripten als problematisch?",["Es ist nicht erlaubt","Ein unsichtbares Leerzeichen dahinter bricht das Skript","Es verlangsamt die Ausführung","Es funktioniert nur in PowerShell 7"],1,"Besser ist der Umbruch nach einem Pipe-Zeichen oder Komma - oder gleich Splatting mit einer Hashtabelle.","PowerShell"],
+["Welche Ereignis-ID steht für eine Kontosperrung?",["4624","4625","4740","1102"],2,"4740 wird auf dem PDC-Emulator geschrieben und nennt auch den Rechner, von dem die Fehlversuche kamen.","Active Directory"],
+["Was bedeutet Ereignis-ID 1102 im Sicherheitsprotokoll?",["Erfolgreiche Anmeldung","Das Sicherheitsprotokoll wurde geleert","Ein Konto wurde erstellt","Ein Kerberos-Ticket wurde ausgestellt"],1,"Im Normalbetrieb passiert das nie. Ein solcher Eintrag gehört immer untersucht.","Active Directory"],
+["Warum sollte sich ein Domänenadministrator nicht an einem normalen Arbeitsplatz anmelden?",["Aus Lizenzgründen","Weil seine Anmeldedaten auf diesem Rechner angreifbar zurückbleiben","Weil die Anmeldung zu lange dauert","Weil GPOs sonst nicht greifen"],1,"Ein kompromittierter Arbeitsplatz gibt damit die gesamte Domäne preis. Deshalb getrennte Konten und ein gesonderter Verwaltungsrechner.","Active Directory"],
+["Wogegen schützt Export-Clixml bei gespeicherten Anmeldedaten?",["Gegen jeden Zugriff","Gegen die Nutzung durch andere Benutzer oder auf anderen Rechnern","Gegen Netzwerkangriffe","Gegen Kennwortablauf"],1,"Die Verschlüsselung ist über die Windows-Datenschutz-API an Benutzer und Rechner gebunden. Kopiert weggetragen ist die Datei wertlos.","PowerShell"],
+["Welche Gruppe sollte im Normalbetrieb leer sein?",["Domänen-Benutzer","Schema-Admins","Administratoren","Domänencomputer"],1,"Mitglieder werden nur für eine konkrete Schemaerweiterung aufgenommen und danach wieder entfernt.","Active Directory"],
 ["Welcher Befehl zeigt am Client, welche Gruppen tatsächlich im Zugriffstoken stehen?",["net user /domain","whoami /groups","gpresult /r","klist tickets"],1,"whoami /groups liest das aktuelle Token aus - der beste Beweis dafür, ob eine Gruppenänderung schon angekommen ist.","Active Directory"]
 ];
 
@@ -1630,6 +2169,567 @@ var QUELLEN = [
 ];
 
 /* =====================================================================
+   CMDLET-KATALOG  [Modul, Name, Erklärung]
+   ===================================================================== */
+
+var CMDLET_DB = [
+["Microsoft.PowerShell.Core","Get-Command","Findet Befehle nach Name, Verb, Substantiv, Modul oder Parameter"],
+["Microsoft.PowerShell.Core","Get-Help","Zeigt die Hilfe zu einem Befehl oder Konzept"],
+["Microsoft.PowerShell.Core","Update-Help","Lädt die Hilfedateien aus dem Internet nach"],
+["Microsoft.PowerShell.Core","Save-Help","Speichert Hilfedateien lokal, für Rechner ohne Internetzugang"],
+["Microsoft.PowerShell.Core","Get-Module","Zeigt geladene und verfügbare Module"],
+["Microsoft.PowerShell.Core","Import-Module","Lädt ein Modul in die Sitzung"],
+["Microsoft.PowerShell.Core","Remove-Module","Entlädt ein Modul wieder"],
+["Microsoft.PowerShell.Core","New-Module","Erzeugt ein Modul zur Laufzeit im Arbeitsspeicher"],
+["Microsoft.PowerShell.Core","New-ModuleManifest","Legt eine .psd1-Manifestdatei für ein eigenes Modul an"],
+["Microsoft.PowerShell.Core","Test-ModuleManifest","Prüft ein Modulmanifest auf Gültigkeit"],
+["Microsoft.PowerShell.Core","Export-ModuleMember","Legt fest, welche Funktionen ein Modul nach außen gibt"],
+["Microsoft.PowerShell.Core","Where-Object","Filtert Objekte in der Pipeline nach einer Bedingung"],
+["Microsoft.PowerShell.Core","ForEach-Object","Führt für jedes Objekt der Pipeline Code aus"],
+["Microsoft.PowerShell.Core","Get-History","Zeigt die Befehle der aktuellen Sitzung"],
+["Microsoft.PowerShell.Core","Invoke-History","Führt einen Befehl aus dem Verlauf erneut aus"],
+["Microsoft.PowerShell.Core","Add-History","Trägt Einträge in den Sitzungsverlauf ein"],
+["Microsoft.PowerShell.Core","Clear-History","Leert den Sitzungsverlauf"],
+["Microsoft.PowerShell.Core","Invoke-Command","Führt Code lokal oder auf entfernten Rechnern aus"],
+["Microsoft.PowerShell.Core","Enter-PSSession","Öffnet eine interaktive Sitzung auf einem anderen Rechner"],
+["Microsoft.PowerShell.Core","Exit-PSSession","Beendet die interaktive Remotesitzung"],
+["Microsoft.PowerShell.Core","New-PSSession","Erstellt eine wiederverwendbare Verbindung"],
+["Microsoft.PowerShell.Core","Get-PSSession","Listet bestehende Sitzungen"],
+["Microsoft.PowerShell.Core","Remove-PSSession","Schließt und entfernt eine Sitzung"],
+["Microsoft.PowerShell.Core","Connect-PSSession","Verbindet sich wieder mit einer getrennten Sitzung"],
+["Microsoft.PowerShell.Core","Disconnect-PSSession","Trennt die Verbindung, lässt die Sitzung aber weiterlaufen"],
+["Microsoft.PowerShell.Core","Receive-PSSession","Holt Ergebnisse aus einer getrennten Sitzung ab"],
+["Microsoft.PowerShell.Core","New-PSSessionOption","Setzt Zeitlimits und Verbindungsoptionen für Remoting"],
+["Microsoft.PowerShell.Core","New-PSTransportOption","Konfiguriert Ressourcengrenzen einer Sitzungskonfiguration"],
+["Microsoft.PowerShell.Core","Enable-PSRemoting","Aktiviert WinRM und die Firewallregeln für Remoting"],
+["Microsoft.PowerShell.Core","Disable-PSRemoting","Schaltet Remoting wieder ab"],
+["Microsoft.PowerShell.Core","Get-PSSessionConfiguration","Zeigt die Endpunkte, über die Remoting läuft"],
+["Microsoft.PowerShell.Core","Register-PSSessionConfiguration","Legt einen eigenen Remoting-Endpunkt an"],
+["Microsoft.PowerShell.Core","Set-PSSessionConfiguration","Ändert einen bestehenden Endpunkt"],
+["Microsoft.PowerShell.Core","Unregister-PSSessionConfiguration","Entfernt einen Endpunkt"],
+["Microsoft.PowerShell.Core","Enable-PSSessionConfiguration","Aktiviert einen Endpunkt"],
+["Microsoft.PowerShell.Core","Disable-PSSessionConfiguration","Deaktiviert einen Endpunkt"],
+["Microsoft.PowerShell.Core","New-PSSessionConfigurationFile","Erzeugt eine .pssc-Datei für eingeschränkte Endpunkte (JEA)"],
+["Microsoft.PowerShell.Core","Test-PSSessionConfigurationFile","Prüft eine Endpunktdatei"],
+["Microsoft.PowerShell.Core","New-PSRoleCapabilityFile","Definiert, welche Befehle eine JEA-Rolle nutzen darf"],
+["Microsoft.PowerShell.Core","Get-PSSessionCapability","Zeigt, was ein Benutzer an einem Endpunkt ausführen darf"],
+["Microsoft.PowerShell.Core","Start-Job","Startet einen Hintergrundauftrag"],
+["Microsoft.PowerShell.Core","Get-Job","Listet Hintergrundaufträge und ihren Status"],
+["Microsoft.PowerShell.Core","Receive-Job","Holt die Ergebnisse eines Auftrags ab"],
+["Microsoft.PowerShell.Core","Wait-Job","Wartet, bis ein Auftrag fertig ist"],
+["Microsoft.PowerShell.Core","Stop-Job","Bricht einen laufenden Auftrag ab"],
+["Microsoft.PowerShell.Core","Remove-Job","Entfernt einen Auftrag aus der Liste"],
+["Microsoft.PowerShell.Core","Debug-Job","Hält einen laufenden Auftrag zum Debuggen an"],
+["Microsoft.PowerShell.Core","Enter-PSHostProcess","Klinkt sich zum Debuggen in einen laufenden Prozess ein"],
+["Microsoft.PowerShell.Core","Exit-PSHostProcess","Verlässt den fremden Prozess wieder"],
+["Microsoft.PowerShell.Core","Get-PSHostProcessInfo","Listet Prozesse, in die man sich einklinken kann"],
+["Microsoft.PowerShell.Core","Register-ArgumentCompleter","Ergänzt eigene Tabulator-Vervollständigung für Parameter"],
+["Microsoft.PowerShell.Core","Out-Default","Übergibt die Ausgabe an die Standardformatierung"],
+["Microsoft.PowerShell.Core","Out-Host","Schreibt direkt an die Konsole"],
+["Microsoft.PowerShell.Core","Out-Null","Verwirft die Ausgabe - das Gegenstück zu >nul"],
+
+["Microsoft.PowerShell.Management","Get-ChildItem","Listet Elemente eines Pfades, über alle Provider hinweg"],
+["Microsoft.PowerShell.Management","Get-Item","Holt ein einzelnes Element, etwa eine Datei oder einen Schlüssel"],
+["Microsoft.PowerShell.Management","New-Item","Erstellt Datei, Ordner, Symlink oder Registrierungsschlüssel"],
+["Microsoft.PowerShell.Management","Set-Item","Setzt den Wert eines Elements"],
+["Microsoft.PowerShell.Management","Remove-Item","Löscht Elemente, mit -Recurse auch ganze Bäume"],
+["Microsoft.PowerShell.Management","Rename-Item","Benennt ein Element um"],
+["Microsoft.PowerShell.Management","Copy-Item","Kopiert Elemente, auch über Remotesitzungen hinweg"],
+["Microsoft.PowerShell.Management","Move-Item","Verschiebt Elemente"],
+["Microsoft.PowerShell.Management","Clear-Item","Leert den Inhalt eines Elements, ohne es zu löschen"],
+["Microsoft.PowerShell.Management","Invoke-Item","Öffnet ein Element mit dem verknüpften Programm"],
+["Microsoft.PowerShell.Management","Get-ItemProperty","Liest Eigenschaften, typischerweise Registrierungswerte"],
+["Microsoft.PowerShell.Management","Get-ItemPropertyValue","Liefert nur den Wert statt des ganzen Objekts"],
+["Microsoft.PowerShell.Management","Set-ItemProperty","Schreibt eine Eigenschaft oder einen Registrierungswert"],
+["Microsoft.PowerShell.Management","New-ItemProperty","Legt einen neuen Registrierungswert an"],
+["Microsoft.PowerShell.Management","Remove-ItemProperty","Löscht eine Eigenschaft"],
+["Microsoft.PowerShell.Management","Rename-ItemProperty","Benennt eine Eigenschaft um"],
+["Microsoft.PowerShell.Management","Copy-ItemProperty","Kopiert eine Eigenschaft an einen anderen Ort"],
+["Microsoft.PowerShell.Management","Move-ItemProperty","Verschiebt eine Eigenschaft"],
+["Microsoft.PowerShell.Management","Clear-ItemProperty","Leert den Wert einer Eigenschaft"],
+["Microsoft.PowerShell.Management","Get-Content","Liest Dateiinhalt, mit -Tail und -Wait auch fortlaufend"],
+["Microsoft.PowerShell.Management","Set-Content","Schreibt Inhalt und überschreibt dabei"],
+["Microsoft.PowerShell.Management","Add-Content","Hängt Inhalt an eine Datei an"],
+["Microsoft.PowerShell.Management","Clear-Content","Leert eine Datei, behält sie aber"],
+["Microsoft.PowerShell.Management","Test-Path","Prüft, ob ein Pfad existiert"],
+["Microsoft.PowerShell.Management","Resolve-Path","Löst Platzhalter zu vollständigen Pfaden auf"],
+["Microsoft.PowerShell.Management","Convert-Path","Wandelt einen PowerShell-Pfad in einen Systempfad"],
+["Microsoft.PowerShell.Management","Join-Path","Setzt Pfadteile zuverlässig zusammen"],
+["Microsoft.PowerShell.Management","Split-Path","Zerlegt einen Pfad in Laufwerk, Ordner, Dateiname"],
+["Microsoft.PowerShell.Management","Get-Location","Zeigt das aktuelle Verzeichnis"],
+["Microsoft.PowerShell.Management","Set-Location","Wechselt das Verzeichnis oder den Provider"],
+["Microsoft.PowerShell.Management","Push-Location","Merkt sich den Ort und wechselt"],
+["Microsoft.PowerShell.Management","Pop-Location","Kehrt zum gemerkten Ort zurück"],
+["Microsoft.PowerShell.Management","Get-PSDrive","Zeigt alle Laufwerke, auch virtuelle wie HKLM: oder Cert:"],
+["Microsoft.PowerShell.Management","New-PSDrive","Bindet ein Laufwerk ein, mit -Persist auch dauerhaft"],
+["Microsoft.PowerShell.Management","Remove-PSDrive","Entfernt eine Laufwerkszuordnung"],
+["Microsoft.PowerShell.Management","Get-PSProvider","Zeigt die verfügbaren Provider"],
+["Microsoft.PowerShell.Management","Get-Process","Listet laufende Prozesse als Objekte"],
+["Microsoft.PowerShell.Management","Start-Process","Startet ein Programm, auf Wunsch erhöht oder versteckt"],
+["Microsoft.PowerShell.Management","Stop-Process","Beendet Prozesse nach Name oder ID"],
+["Microsoft.PowerShell.Management","Wait-Process","Wartet, bis ein Prozess beendet ist"],
+["Microsoft.PowerShell.Management","Debug-Process","Hängt einen Debugger an einen Prozess"],
+["Microsoft.PowerShell.Management","Get-Service","Zeigt Dienste mit Status, Starttyp und Abhängigkeiten"],
+["Microsoft.PowerShell.Management","Start-Service","Startet einen Dienst"],
+["Microsoft.PowerShell.Management","Stop-Service","Beendet einen Dienst"],
+["Microsoft.PowerShell.Management","Restart-Service","Startet einen Dienst neu"],
+["Microsoft.PowerShell.Management","Suspend-Service","Hält einen Dienst an"],
+["Microsoft.PowerShell.Management","Resume-Service","Setzt einen angehaltenen Dienst fort"],
+["Microsoft.PowerShell.Management","Set-Service","Ändert Starttyp, Anzeigenamen oder Beschreibung"],
+["Microsoft.PowerShell.Management","New-Service","Registriert einen neuen Dienst"],
+["Microsoft.PowerShell.Management","Remove-Service","Entfernt einen Dienst (ab PowerShell 6)"],
+["Microsoft.PowerShell.Management","Get-ComputerInfo","Umfassende Systemübersicht in einem Objekt"],
+["Microsoft.PowerShell.Management","Rename-Computer","Benennt den Rechner um"],
+["Microsoft.PowerShell.Management","Restart-Computer","Startet lokale oder entfernte Rechner neu"],
+["Microsoft.PowerShell.Management","Stop-Computer","Fährt Rechner herunter"],
+["Microsoft.PowerShell.Management","Add-Computer","Nimmt einen Rechner in eine Domäne oder Arbeitsgruppe auf"],
+["Microsoft.PowerShell.Management","Remove-Computer","Entfernt einen Rechner aus der Domäne"],
+["Microsoft.PowerShell.Management","Test-ComputerSecureChannel","Prüft und repariert den Vertrauenskanal zur Domäne"],
+["Microsoft.PowerShell.Management","Test-Connection","ICMP-Test mit Objektausgabe, -Quiet liefert True/False"],
+["Microsoft.PowerShell.Management","Get-HotFix","Listet installierte Updates und Hotfixes"],
+["Microsoft.PowerShell.Management","Get-TimeZone","Zeigt die eingestellte Zeitzone"],
+["Microsoft.PowerShell.Management","Set-TimeZone","Setzt die Zeitzone"],
+["Microsoft.PowerShell.Management","Get-Clipboard","Liest die Zwischenablage"],
+["Microsoft.PowerShell.Management","Set-Clipboard","Schreibt in die Zwischenablage"],
+["Microsoft.PowerShell.Management","Clear-RecycleBin","Leert den Papierkorb"],
+["Microsoft.PowerShell.Management","Get-EventLog","Klassische Protokollabfrage, nur Windows PowerShell 5.1"],
+["Microsoft.PowerShell.Management","Write-EventLog","Schreibt einen eigenen Eintrag ins Ereignisprotokoll"],
+["Microsoft.PowerShell.Management","Clear-EventLog","Leert ein Ereignisprotokoll"],
+["Microsoft.PowerShell.Management","Show-EventLog","Öffnet die Ereignisanzeige"],
+["Microsoft.PowerShell.Management","Get-WmiObject","Klassische WMI-Abfrage über DCOM, nur 5.1 und veraltet"],
+["Microsoft.PowerShell.Management","Invoke-WmiMethod","Ruft eine WMI-Methode auf, veraltet"],
+["Microsoft.PowerShell.Management","Set-WmiInstance","Ändert eine WMI-Instanz, veraltet"],
+["Microsoft.PowerShell.Management","Remove-WmiObject","Löscht eine WMI-Instanz, veraltet"],
+["Microsoft.PowerShell.Management","Register-WmiEvent","Abonniert ein WMI-Ereignis"],
+["Microsoft.PowerShell.Management","Checkpoint-Computer","Erstellt einen Systemwiederherstellungspunkt"],
+["Microsoft.PowerShell.Management","Restore-Computer","Setzt auf einen Wiederherstellungspunkt zurück"],
+["Microsoft.PowerShell.Management","Get-ComputerRestorePoint","Listet vorhandene Wiederherstellungspunkte"],
+["Microsoft.PowerShell.Management","Enable-ComputerRestore","Schaltet die Systemwiederherstellung ein"],
+["Microsoft.PowerShell.Management","Disable-ComputerRestore","Schaltet die Systemwiederherstellung aus"],
+["Microsoft.PowerShell.Management","Get-ControlPanelItem","Findet Systemsteuerungselemente"],
+["Microsoft.PowerShell.Management","Show-ControlPanelItem","Öffnet ein Systemsteuerungselement"]
+];
+
+CMDLET_DB.push(
+["Microsoft.PowerShell.Utility","Select-Object","Wählt Eigenschaften aus oder begrenzt die Anzahl"],
+["Microsoft.PowerShell.Utility","Sort-Object","Sortiert Objekte nach einer oder mehreren Eigenschaften"],
+["Microsoft.PowerShell.Utility","Group-Object","Gruppiert und zählt nach einer Eigenschaft"],
+["Microsoft.PowerShell.Utility","Measure-Object","Bildet Summe, Mittelwert, Minimum und Maximum"],
+["Microsoft.PowerShell.Utility","Compare-Object","Vergleicht zwei Objektmengen und zeigt die Unterschiede"],
+["Microsoft.PowerShell.Utility","Tee-Object","Schreibt in eine Datei und gibt gleichzeitig weiter"],
+["Microsoft.PowerShell.Utility","Get-Unique","Entfernt aufeinanderfolgende Duplikate aus einer sortierten Liste"],
+["Microsoft.PowerShell.Utility","Get-Member","Zeigt Eigenschaften und Methoden eines Objekts"],
+["Microsoft.PowerShell.Utility","Add-Member","Ergänzt ein Objekt um eigene Eigenschaften"],
+["Microsoft.PowerShell.Utility","New-Object","Erzeugt ein .NET- oder COM-Objekt"],
+["Microsoft.PowerShell.Utility","Add-Type","Bindet C#-Code oder eine .NET-Bibliothek ein"],
+["Microsoft.PowerShell.Utility","Format-Table","Stellt Objekte als Tabelle dar"],
+["Microsoft.PowerShell.Utility","Format-List","Stellt jede Eigenschaft in einer eigenen Zeile dar"],
+["Microsoft.PowerShell.Utility","Format-Wide","Stellt nur eine Eigenschaft mehrspaltig dar"],
+["Microsoft.PowerShell.Utility","Format-Custom","Nutzt eine eigene Formatierungsvorlage"],
+["Microsoft.PowerShell.Utility","Format-Hex","Zeigt Dateien oder Werte als Hexdump"],
+["Microsoft.PowerShell.Utility","Get-FormatData","Zeigt die hinterlegten Formatierungsregeln"],
+["Microsoft.PowerShell.Utility","Update-FormatData","Lädt eigene Formatierungsdateien nach"],
+["Microsoft.PowerShell.Utility","Export-FormatData","Exportiert Formatierungsregeln als XML"],
+["Microsoft.PowerShell.Utility","Out-File","Schreibt die Ausgabe in eine Datei"],
+["Microsoft.PowerShell.Utility","Out-String","Wandelt Objekte in formatierten Text um"],
+["Microsoft.PowerShell.Utility","Out-GridView","Öffnet ein sortier- und filterbares Fenster, -PassThru gibt zurück"],
+["Microsoft.PowerShell.Utility","Out-Printer","Schickt die Ausgabe an einen Drucker"],
+["Microsoft.PowerShell.Utility","Export-Csv","Exportiert Objekte als CSV-Datei"],
+["Microsoft.PowerShell.Utility","Import-Csv","Liest eine CSV ein und erzeugt daraus Objekte"],
+["Microsoft.PowerShell.Utility","ConvertTo-Csv","Wandelt in CSV-Text um, ohne Datei zu schreiben"],
+["Microsoft.PowerShell.Utility","ConvertFrom-Csv","Wandelt CSV-Text in Objekte"],
+["Microsoft.PowerShell.Utility","ConvertTo-Json","Wandelt Objekte in JSON, -Depth beachten"],
+["Microsoft.PowerShell.Utility","ConvertFrom-Json","Wandelt JSON in Objekte"],
+["Microsoft.PowerShell.Utility","Test-Json","Prüft JSON auf Gültigkeit, auch gegen ein Schema"],
+["Microsoft.PowerShell.Utility","ConvertTo-Xml","Wandelt Objekte in XML"],
+["Microsoft.PowerShell.Utility","Select-Xml","Fragt XML per XPath ab"],
+["Microsoft.PowerShell.Utility","ConvertTo-Html","Erzeugt eine HTML-Tabelle für Berichte"],
+["Microsoft.PowerShell.Utility","Export-Clixml","Speichert Objekte samt Typinformation als XML"],
+["Microsoft.PowerShell.Utility","Import-Clixml","Lädt zuvor exportierte Objekte zurück"],
+["Microsoft.PowerShell.Utility","ConvertFrom-StringData","Macht aus Schlüssel-Wert-Text eine Hashtabelle"],
+["Microsoft.PowerShell.Utility","ConvertFrom-SddlString","Übersetzt eine SDDL-Zeichenkette in lesbare Rechte"],
+["Microsoft.PowerShell.Utility","ConvertFrom-Markdown","Wandelt Markdown in HTML oder VT100-Text"],
+["Microsoft.PowerShell.Utility","Show-Markdown","Zeigt Markdown formatiert in der Konsole"],
+["Microsoft.PowerShell.Utility","Join-String","Fügt Objekte zu einer Zeichenkette zusammen"],
+["Microsoft.PowerShell.Utility","Select-String","Durchsucht Text nach Mustern und liefert Trefferobjekte"],
+["Microsoft.PowerShell.Utility","Get-Date","Liefert Datum und Uhrzeit als Objekt"],
+["Microsoft.PowerShell.Utility","Set-Date","Stellt die Systemzeit"],
+["Microsoft.PowerShell.Utility","New-TimeSpan","Erzeugt eine Zeitspanne für Berechnungen"],
+["Microsoft.PowerShell.Utility","Measure-Command","Misst die Laufzeit eines Codeblocks"],
+["Microsoft.PowerShell.Utility","Get-Uptime","Zeigt die Laufzeit seit dem letzten Start (ab PowerShell 6)"],
+["Microsoft.PowerShell.Utility","Start-Sleep","Pausiert die Ausführung"],
+["Microsoft.PowerShell.Utility","Get-Random","Liefert Zufallszahlen oder wählt zufällig aus einer Liste"],
+["Microsoft.PowerShell.Utility","New-Guid","Erzeugt eine eindeutige Kennung"],
+["Microsoft.PowerShell.Utility","New-TemporaryFile","Legt eine temporäre Datei an"],
+["Microsoft.PowerShell.Utility","Get-FileHash","Berechnet Prüfsummen, Standard SHA256"],
+["Microsoft.PowerShell.Utility","Unblock-File","Entfernt die Herkunftsmarkierung heruntergeladener Dateien"],
+["Microsoft.PowerShell.Utility","Get-Variable","Zeigt Variablen der Sitzung"],
+["Microsoft.PowerShell.Utility","Set-Variable","Setzt eine Variable, auch mit Schreibschutz"],
+["Microsoft.PowerShell.Utility","New-Variable","Legt eine neue Variable an"],
+["Microsoft.PowerShell.Utility","Remove-Variable","Löscht eine Variable"],
+["Microsoft.PowerShell.Utility","Clear-Variable","Leert den Wert einer Variablen"],
+["Microsoft.PowerShell.Utility","Get-Alias","Zeigt Aliase und worauf sie zeigen"],
+["Microsoft.PowerShell.Utility","Set-Alias","Setzt oder ändert einen Alias"],
+["Microsoft.PowerShell.Utility","New-Alias","Legt einen neuen Alias an"],
+["Microsoft.PowerShell.Utility","Remove-Alias","Entfernt einen Alias (ab PowerShell 6)"],
+["Microsoft.PowerShell.Utility","Import-Alias","Lädt Aliase aus einer Datei"],
+["Microsoft.PowerShell.Utility","Export-Alias","Speichert Aliase in eine Datei"],
+["Microsoft.PowerShell.Utility","Get-Verb","Listet alle genehmigten Verben für Cmdlet-Namen"],
+["Microsoft.PowerShell.Utility","Write-Output","Gibt Objekte in die Pipeline"],
+["Microsoft.PowerShell.Utility","Write-Host","Schreibt direkt auf den Bildschirm, umgeht die Pipeline"],
+["Microsoft.PowerShell.Utility","Write-Error","Erzeugt einen Fehler im Fehlerstrom"],
+["Microsoft.PowerShell.Utility","Write-Warning","Gibt eine Warnung aus"],
+["Microsoft.PowerShell.Utility","Write-Verbose","Ausführliche Meldung, sichtbar nur mit -Verbose"],
+["Microsoft.PowerShell.Utility","Write-Debug","Debugmeldung, sichtbar nur mit -Debug"],
+["Microsoft.PowerShell.Utility","Write-Information","Schreibt in den Informationsstrom"],
+["Microsoft.PowerShell.Utility","Write-Progress","Zeigt einen Fortschrittsbalken"],
+["Microsoft.PowerShell.Utility","Read-Host","Fragt eine Eingabe ab, auch als SecureString"],
+["Microsoft.PowerShell.Utility","Get-Host","Zeigt Informationen über die Konsolenumgebung"],
+["Microsoft.PowerShell.Utility","Get-Culture","Zeigt die Regionseinstellung der Sitzung"],
+["Microsoft.PowerShell.Utility","Get-UICulture","Zeigt die Sprache der Benutzeroberfläche"],
+["Microsoft.PowerShell.Utility","Invoke-WebRequest","Ruft Webseiten und Dateien ab, zerlegt HTML"],
+["Microsoft.PowerShell.Utility","Invoke-RestMethod","Ruft REST-APIs ab und wandelt JSON direkt in Objekte"],
+["Microsoft.PowerShell.Utility","Send-MailMessage","Verschickt E-Mails, offiziell als veraltet gekennzeichnet"],
+["Microsoft.PowerShell.Utility","Invoke-Expression","Führt eine Zeichenkette als Code aus - Vorsicht bei Fremdeingaben"],
+["Microsoft.PowerShell.Utility","Show-Command","Öffnet eine grafische Eingabemaske für ein Cmdlet"],
+["Microsoft.PowerShell.Utility","Get-Error","Zeigt den letzten Fehler vollständig aufgeschlüsselt (ab PowerShell 7)"],
+["Microsoft.PowerShell.Utility","Set-PSBreakpoint","Setzt einen Haltepunkt für die Fehlersuche"],
+["Microsoft.PowerShell.Utility","Get-PSBreakpoint","Listet gesetzte Haltepunkte"],
+["Microsoft.PowerShell.Utility","Enable-PSBreakpoint","Aktiviert einen Haltepunkt"],
+["Microsoft.PowerShell.Utility","Disable-PSBreakpoint","Deaktiviert einen Haltepunkt"],
+["Microsoft.PowerShell.Utility","Remove-PSBreakpoint","Entfernt einen Haltepunkt"],
+["Microsoft.PowerShell.Utility","Get-PSCallStack","Zeigt den Aufrufstapel beim Debuggen"],
+["Microsoft.PowerShell.Utility","Trace-Command","Protokolliert intern, was PowerShell bei einem Befehl tut"],
+["Microsoft.PowerShell.Utility","Get-TypeData","Zeigt erweiterte Typinformationen"],
+["Microsoft.PowerShell.Utility","Update-TypeData","Ergänzt eigene Eigenschaften für einen Typ"],
+["Microsoft.PowerShell.Utility","Register-ObjectEvent","Reagiert auf Ereignisse eines .NET-Objekts"],
+["Microsoft.PowerShell.Utility","Register-EngineEvent","Reagiert auf Ereignisse der PowerShell-Engine"],
+["Microsoft.PowerShell.Utility","Get-EventSubscriber","Listet aktive Ereignisabonnements"],
+["Microsoft.PowerShell.Utility","Wait-Event","Wartet auf ein Ereignis"],
+["Microsoft.PowerShell.Utility","Import-PowerShellDataFile","Liest eine .psd1-Datei sicher als Hashtabelle ein"],
+["Microsoft.PowerShell.Utility","Import-LocalizedData","Lädt sprachabhängige Texte für Skripte"],
+["Microsoft.PowerShell.Utility","Export-PSSession","Erzeugt aus einer Remotesitzung ein lokales Modul"],
+["Microsoft.PowerShell.Utility","Import-PSSession","Holt Befehle einer Remotesitzung in die lokale Sitzung"],
+
+["Microsoft.PowerShell.Security","Get-ExecutionPolicy","Zeigt die Ausführungsrichtlinie, mit -List alle Bereiche"],
+["Microsoft.PowerShell.Security","Set-ExecutionPolicy","Setzt die Ausführungsrichtlinie für einen Bereich"],
+["Microsoft.PowerShell.Security","Get-Acl","Liest die Zugriffsliste einer Datei, eines Ordners oder Schlüssels"],
+["Microsoft.PowerShell.Security","Set-Acl","Schreibt eine Zugriffsliste"],
+["Microsoft.PowerShell.Security","Get-Credential","Fragt Anmeldedaten sicher ab"],
+["Microsoft.PowerShell.Security","ConvertTo-SecureString","Wandelt Text in einen SecureString"],
+["Microsoft.PowerShell.Security","ConvertFrom-SecureString","Wandelt einen SecureString in verschlüsselten Text"],
+["Microsoft.PowerShell.Security","Get-AuthenticodeSignature","Prüft die digitale Signatur einer Datei"],
+["Microsoft.PowerShell.Security","Set-AuthenticodeSignature","Signiert ein Skript oder eine Datei"],
+["Microsoft.PowerShell.Security","Get-PfxCertificate","Liest ein Zertifikat aus einer PFX-Datei"],
+["Microsoft.PowerShell.Security","Protect-CmsMessage","Verschlüsselt Inhalte per Zertifikat"],
+["Microsoft.PowerShell.Security","Unprotect-CmsMessage","Entschlüsselt eine CMS-Nachricht"],
+["Microsoft.PowerShell.Security","Get-CmsMessage","Liest eine verschlüsselte CMS-Nachricht ein"],
+["Microsoft.PowerShell.Security","New-FileCatalog","Erzeugt eine Katalogdatei mit Prüfsummen"],
+["Microsoft.PowerShell.Security","Test-FileCatalog","Prüft Dateien gegen eine Katalogdatei"]
+);
+
+CMDLET_DB.push(
+["CimCmdlets","Get-CimInstance","Fragt WMI-Klassen ab - der moderne Ersatz für Get-WmiObject"],
+["CimCmdlets","Set-CimInstance","Ändert Eigenschaften einer CIM-Instanz"],
+["CimCmdlets","New-CimInstance","Erzeugt eine neue Instanz"],
+["CimCmdlets","Remove-CimInstance","Löscht eine Instanz"],
+["CimCmdlets","Invoke-CimMethod","Ruft eine Methode einer CIM-Klasse auf"],
+["CimCmdlets","Get-CimClass","Zeigt Aufbau und Methoden einer Klasse"],
+["CimCmdlets","New-CimSession","Baut eine wiederverwendbare Verbindung zu einem Rechner auf"],
+["CimCmdlets","Get-CimSession","Listet bestehende CIM-Sitzungen"],
+["CimCmdlets","Remove-CimSession","Schließt eine CIM-Sitzung"],
+["CimCmdlets","New-CimSessionOption","Setzt Protokoll- und Sicherheitsoptionen, etwa DCOM statt WSMan"],
+["CimCmdlets","Register-CimIndicationEvent","Abonniert CIM-Ereignisse"],
+
+["Microsoft.PowerShell.Diagnostics","Get-WinEvent","Fragt alle Ereignisprotokolle ab, mit -FilterHashtable sehr schnell"],
+["Microsoft.PowerShell.Diagnostics","New-WinEvent","Erzeugt ein Ereignis über einen ETW-Anbieter"],
+["Microsoft.PowerShell.Diagnostics","Get-Counter","Liest Leistungsindikatoren, lokal und entfernt"],
+["Microsoft.PowerShell.Diagnostics","Export-Counter","Schreibt Leistungsdaten in eine .blg- oder .csv-Datei"],
+["Microsoft.PowerShell.Diagnostics","Import-Counter","Liest aufgezeichnete Leistungsdaten ein"],
+
+["Microsoft.PowerShell.LocalAccounts","Get-LocalUser","Zeigt lokale Benutzerkonten"],
+["Microsoft.PowerShell.LocalAccounts","New-LocalUser","Legt ein lokales Konto an"],
+["Microsoft.PowerShell.LocalAccounts","Set-LocalUser","Ändert ein lokales Konto"],
+["Microsoft.PowerShell.LocalAccounts","Remove-LocalUser","Löscht ein lokales Konto"],
+["Microsoft.PowerShell.LocalAccounts","Enable-LocalUser","Aktiviert ein lokales Konto"],
+["Microsoft.PowerShell.LocalAccounts","Disable-LocalUser","Deaktiviert ein lokales Konto"],
+["Microsoft.PowerShell.LocalAccounts","Rename-LocalUser","Benennt ein lokales Konto um"],
+["Microsoft.PowerShell.LocalAccounts","Get-LocalGroup","Zeigt lokale Gruppen"],
+["Microsoft.PowerShell.LocalAccounts","New-LocalGroup","Legt eine lokale Gruppe an"],
+["Microsoft.PowerShell.LocalAccounts","Set-LocalGroup","Ändert die Beschreibung einer lokalen Gruppe"],
+["Microsoft.PowerShell.LocalAccounts","Remove-LocalGroup","Löscht eine lokale Gruppe"],
+["Microsoft.PowerShell.LocalAccounts","Rename-LocalGroup","Benennt eine lokale Gruppe um"],
+["Microsoft.PowerShell.LocalAccounts","Get-LocalGroupMember","Listet die Mitglieder einer lokalen Gruppe"],
+["Microsoft.PowerShell.LocalAccounts","Add-LocalGroupMember","Nimmt ein Konto in eine lokale Gruppe auf, auch Domänenkonten"],
+["Microsoft.PowerShell.LocalAccounts","Remove-LocalGroupMember","Entfernt ein Mitglied"],
+
+["Microsoft.PowerShell.Archive","Compress-Archive","Packt Dateien in ein ZIP-Archiv"],
+["Microsoft.PowerShell.Archive","Expand-Archive","Entpackt ein ZIP-Archiv"],
+
+["PSReadLine","Get-PSReadLineOption","Zeigt die Einstellungen der Eingabezeile"],
+["PSReadLine","Set-PSReadLineOption","Ändert Verlauf, Farben und Vorhersagemodus"],
+["PSReadLine","Get-PSReadLineKeyHandler","Listet alle Tastenkürzel der Konsole"],
+["PSReadLine","Set-PSReadLineKeyHandler","Belegt Tasten neu"],
+["PSReadLine","Remove-PSReadLineKeyHandler","Entfernt eine Tastenbelegung"],
+
+["Microsoft.WSMan.Management","Test-WSMan","Prüft, ob WinRM auf einem Rechner erreichbar ist"],
+["Microsoft.WSMan.Management","Get-WSManInstance","Fragt WS-Management-Ressourcen ab"],
+["Microsoft.WSMan.Management","Invoke-WSManAction","Ruft eine Aktion über WS-Management auf"],
+["Microsoft.WSMan.Management","Connect-WSMan","Verbindet sich mit dem WinRM-Dienst eines Rechners"],
+["Microsoft.WSMan.Management","Disconnect-WSMan","Trennt die WinRM-Verbindung"],
+["Microsoft.WSMan.Management","Set-WSManQuickConfig","Richtet WinRM mit Standardwerten ein"],
+["Microsoft.WSMan.Management","Get-WSManCredSSP","Zeigt den CredSSP-Status"],
+["Microsoft.WSMan.Management","Enable-WSManCredSSP","Aktiviert CredSSP für die Weitergabe von Anmeldedaten"],
+["Microsoft.WSMan.Management","Disable-WSManCredSSP","Deaktiviert CredSSP"],
+
+["PowerShellGet","Find-Module","Sucht Module in der PowerShell Gallery"],
+["PowerShellGet","Install-Module","Installiert ein Modul, -Scope CurrentUser ohne Adminrechte"],
+["PowerShellGet","Update-Module","Aktualisiert ein installiertes Modul"],
+["PowerShellGet","Uninstall-Module","Entfernt ein Modul"],
+["PowerShellGet","Save-Module","Lädt ein Modul herunter, ohne es zu installieren"],
+["PowerShellGet","Publish-Module","Veröffentlicht ein eigenes Modul in einem Repository"],
+["PowerShellGet","Get-InstalledModule","Zeigt die über PowerShellGet installierten Module"],
+["PowerShellGet","Register-PSRepository","Bindet ein internes Modulrepository ein"],
+["PowerShellGet","Get-PSRepository","Listet bekannte Repositories"],
+["PowerShellGet","Find-Script","Sucht Skripte in einem Repository"],
+["PowerShellGet","Install-Script","Installiert ein Skript aus einem Repository"],
+["PackageManagement","Get-Package","Zeigt installierte Pakete über alle Anbieter"],
+["PackageManagement","Find-Package","Sucht Pakete bei den registrierten Anbietern"],
+["PackageManagement","Install-Package","Installiert ein Paket"],
+["PackageManagement","Uninstall-Package","Entfernt ein Paket"],
+["PackageManagement","Get-PackageProvider","Listet die Paketanbieter, etwa NuGet oder Chocolatey"],
+
+["ScheduledTasks","Get-ScheduledTask","Listet geplante Aufgaben"],
+["ScheduledTasks","Register-ScheduledTask","Legt eine geplante Aufgabe an"],
+["ScheduledTasks","Unregister-ScheduledTask","Entfernt eine geplante Aufgabe"],
+["ScheduledTasks","Set-ScheduledTask","Ändert eine bestehende Aufgabe"],
+["ScheduledTasks","Start-ScheduledTask","Startet eine Aufgabe sofort"],
+["ScheduledTasks","Stop-ScheduledTask","Bricht eine laufende Aufgabe ab"],
+["ScheduledTasks","Enable-ScheduledTask","Aktiviert eine Aufgabe"],
+["ScheduledTasks","Disable-ScheduledTask","Deaktiviert eine Aufgabe"],
+["ScheduledTasks","Get-ScheduledTaskInfo","Zeigt letzte und nächste Ausführung samt Ergebniscode"],
+["ScheduledTasks","New-ScheduledTaskAction","Definiert, was die Aufgabe ausführt"],
+["ScheduledTasks","New-ScheduledTaskTrigger","Definiert, wann die Aufgabe startet"],
+["ScheduledTasks","New-ScheduledTaskPrincipal","Legt fest, unter welchem Konto sie läuft"],
+["ScheduledTasks","New-ScheduledTaskSettingsSet","Setzt Verhalten bei Akkubetrieb, Wiederholung und Zeitlimits"],
+
+["BitsTransfer","Start-BitsTransfer","Überträgt Dateien im Hintergrund, mit Wiederaufnahme nach Abbruch"],
+["BitsTransfer","Get-BitsTransfer","Zeigt laufende Übertragungsaufträge"],
+["BitsTransfer","Complete-BitsTransfer","Schließt einen Auftrag ab und legt die Dateien am Ziel ab"],
+["BitsTransfer","Resume-BitsTransfer","Setzt eine angehaltene Übertragung fort"],
+["BitsTransfer","Remove-BitsTransfer","Bricht einen Auftrag ab"],
+
+["PrintManagement","Get-Printer","Listet installierte Drucker"],
+["PrintManagement","Add-Printer","Richtet einen Drucker ein"],
+["PrintManagement","Remove-Printer","Entfernt einen Drucker"],
+["PrintManagement","Set-Printer","Ändert Druckereinstellungen"],
+["PrintManagement","Get-PrintJob","Zeigt die Warteschlange"],
+["PrintManagement","Remove-PrintJob","Löscht einen Druckauftrag"],
+["PrintManagement","Get-PrinterDriver","Listet Druckertreiber"],
+["PrintManagement","Add-PrinterPort","Legt einen Druckeranschluss an"],
+
+["Defender","Get-MpComputerStatus","Zeigt Status und Signaturstand von Microsoft Defender"],
+["Defender","Start-MpScan","Startet eine Überprüfung"],
+["Defender","Update-MpSignature","Aktualisiert die Erkennungssignaturen"],
+["Defender","Get-MpThreatDetection","Listet erkannte Bedrohungen"],
+["Defender","Get-MpPreference","Zeigt die Einstellungen"],
+["Defender","Set-MpPreference","Ändert Einstellungen, etwa Ausschlüsse"],
+["Defender","Add-MpPreference","Ergänzt Ausschlüsse, ohne bestehende zu ersetzen"],
+["Defender","Remove-MpThreat","Entfernt eine erkannte Bedrohung"]
+);
+
+CMDLET_DB.push(
+["NetTCPIP","Get-NetIPConfiguration","Zeigt Adresse, Gateway und DNS je Adapter - das ipconfig der Neuzeit"],
+["NetTCPIP","Get-NetIPAddress","Listet alle konfigurierten IP-Adressen"],
+["NetTCPIP","New-NetIPAddress","Vergibt eine feste IP-Adresse"],
+["NetTCPIP","Set-NetIPAddress","Ändert eine bestehende Adresse"],
+["NetTCPIP","Remove-NetIPAddress","Entfernt eine Adresse"],
+["NetTCPIP","Get-NetIPInterface","Zeigt Schnittstelleneinstellungen wie DHCP-Status und Metrik"],
+["NetTCPIP","Set-NetIPInterface","Schaltet DHCP um oder ändert die Metrik"],
+["NetTCPIP","Get-NetRoute","Zeigt die Routingtabelle"],
+["NetTCPIP","New-NetRoute","Legt eine statische Route an"],
+["NetTCPIP","Remove-NetRoute","Entfernt eine Route"],
+["NetTCPIP","Get-NetNeighbor","Zeigt den ARP- bzw. Nachbarschaftscache"],
+["NetTCPIP","Remove-NetNeighbor","Löscht einen Eintrag aus dem Cache"],
+["NetTCPIP","Get-NetTCPConnection","Listet TCP-Verbindungen samt besitzendem Prozess"],
+["NetTCPIP","Get-NetUDPEndpoint","Listet offene UDP-Endpunkte"],
+["NetTCPIP","Test-NetConnection","Prüft Erreichbarkeit, einen TCP-Port oder den Weg zum Ziel"],
+["NetTCPIP","Get-NetTransportFilter","Zeigt Filter für TCP-Einstellungen"],
+["NetTCPIP","Get-NetTCPSetting","Zeigt TCP-Parameter wie Überlastalgorithmus"],
+
+["DnsClient","Resolve-DnsName","Fragt DNS ab, auch gezielt nach SRV-, MX- oder TXT-Einträgen"],
+["DnsClient","Get-DnsClient","Zeigt die DNS-Einstellungen je Schnittstelle"],
+["DnsClient","Set-DnsClient","Setzt das Verbindungssuffix einer Schnittstelle"],
+["DnsClient","Get-DnsClientServerAddress","Zeigt die eingetragenen DNS-Server"],
+["DnsClient","Set-DnsClientServerAddress","Setzt die DNS-Server - in der Domäne die internen"],
+["DnsClient","Get-DnsClientCache","Zeigt den lokalen Auflösungscache"],
+["DnsClient","Clear-DnsClientCache","Leert den DNS-Cache"],
+["DnsClient","Register-DnsClient","Meldet den Rechner erneut im DNS an"],
+["DnsClient","Get-DnsClientGlobalSetting","Zeigt Suchsuffixe und globale Einstellungen"],
+["DnsClient","Set-DnsClientGlobalSetting","Setzt die DNS-Suffixsuchliste"],
+
+["NetAdapter","Get-NetAdapter","Listet Netzwerkadapter mit Status, Tempo und MAC-Adresse"],
+["NetAdapter","Enable-NetAdapter","Aktiviert einen Adapter"],
+["NetAdapter","Disable-NetAdapter","Deaktiviert einen Adapter"],
+["NetAdapter","Restart-NetAdapter","Setzt einen Adapter zurück"],
+["NetAdapter","Rename-NetAdapter","Benennt einen Adapter um"],
+["NetAdapter","Set-NetAdapter","Ändert Adaptereigenschaften, etwa die VLAN-Kennung"],
+["NetAdapter","Get-NetAdapterAdvancedProperty","Zeigt erweiterte Treibereinstellungen"],
+["NetAdapter","Set-NetAdapterAdvancedProperty","Ändert erweiterte Treibereinstellungen"],
+["NetAdapter","Get-NetAdapterBinding","Zeigt gebundene Protokolle wie IPv4 oder IPv6"],
+["NetAdapter","Set-NetAdapterBinding","Aktiviert oder deaktiviert ein Protokoll am Adapter"],
+["NetAdapter","Get-NetAdapterStatistics","Liefert Zähler für gesendete und empfangene Daten"],
+["NetAdapter","Get-NetAdapterPowerManagement","Zeigt Energieeinstellungen des Adapters"],
+["NetConnection","Get-NetConnectionProfile","Zeigt, ob ein Netz als privat, öffentlich oder Domäne gilt"],
+["NetConnection","Set-NetConnectionProfile","Ändert die Netzwerkkategorie"],
+
+["NetSecurity","Get-NetFirewallProfile","Zeigt die drei Firewallprofile und ihren Status"],
+["NetSecurity","Set-NetFirewallProfile","Schaltet ein Profil ein oder aus und setzt das Standardverhalten"],
+["NetSecurity","Get-NetFirewallRule","Listet Firewallregeln"],
+["NetSecurity","New-NetFirewallRule","Legt eine Firewallregel an"],
+["NetSecurity","Set-NetFirewallRule","Ändert eine bestehende Regel"],
+["NetSecurity","Remove-NetFirewallRule","Löscht eine Regel"],
+["NetSecurity","Enable-NetFirewallRule","Aktiviert eine Regel"],
+["NetSecurity","Disable-NetFirewallRule","Deaktiviert eine Regel"],
+["NetSecurity","Get-NetFirewallPortFilter","Zeigt, welche Ports zu einer Regel gehören"],
+["NetSecurity","Get-NetFirewallAddressFilter","Zeigt die Adressbereiche einer Regel"],
+["NetSecurity","Get-NetFirewallApplicationFilter","Zeigt das Programm hinter einer Regel"],
+["NetSecurity","Show-NetFirewallRule","Gibt Regeln mit allen zugehörigen Filtern aus"],
+["NetSecurity","Get-NetIPsecRule","Listet IPsec-Verbindungssicherheitsregeln"],
+
+["SmbShare","Get-SmbShare","Listet Freigaben eines Rechners"],
+["SmbShare","New-SmbShare","Legt eine Freigabe an"],
+["SmbShare","Set-SmbShare","Ändert Freigabeeigenschaften"],
+["SmbShare","Remove-SmbShare","Entfernt eine Freigabe"],
+["SmbShare","Get-SmbShareAccess","Zeigt die Freigabeberechtigungen"],
+["SmbShare","Grant-SmbShareAccess","Vergibt Freigabeberechtigungen"],
+["SmbShare","Revoke-SmbShareAccess","Entzieht Freigabeberechtigungen"],
+["SmbShare","Block-SmbShareAccess","Setzt ein ausdrückliches Verweigern"],
+["SmbShare","Get-SmbSession","Zeigt, wer gerade auf Freigaben zugreift"],
+["SmbShare","Close-SmbSession","Trennt eine Sitzung"],
+["SmbShare","Get-SmbOpenFile","Listet geöffnete Dateien auf dem Server"],
+["SmbShare","Close-SmbOpenFile","Schließt eine blockierte Datei"],
+["SmbShare","Get-SmbConnection","Zeigt die eigenen Verbindungen zu Servern samt SMB-Version"],
+["SmbShare","Get-SmbClientConfiguration","Zeigt die SMB-Clienteinstellungen"],
+["SmbShare","Get-SmbServerConfiguration","Zeigt die SMB-Servereinstellungen, etwa SMB1-Status"],
+["SmbShare","Set-SmbServerConfiguration","Ändert Servereinstellungen, etwa Signaturpflicht"],
+
+["Storage","Get-Disk","Listet physische Datenträger mit Partitionsstil und Status"],
+["Storage","Initialize-Disk","Initialisiert einen Datenträger als MBR oder GPT"],
+["Storage","Clear-Disk","Löscht alle Partitionen eines Datenträgers"],
+["Storage","Set-Disk","Ändert Attribute, etwa online oder schreibgeschützt"],
+["Storage","Get-Partition","Zeigt Partitionen"],
+["Storage","New-Partition","Legt eine Partition an"],
+["Storage","Resize-Partition","Vergrößert oder verkleinert eine Partition"],
+["Storage","Remove-Partition","Entfernt eine Partition"],
+["Storage","Set-Partition","Ändert Laufwerksbuchstaben oder Attribute"],
+["Storage","Get-Volume","Zeigt Volumes mit Dateisystem und freiem Speicher"],
+["Storage","Format-Volume","Formatiert ein Volume"],
+["Storage","Optimize-Volume","Defragmentiert oder führt TRIM aus"],
+["Storage","Repair-Volume","Prüft und repariert ein Volume - das chkdsk-Gegenstück"],
+["Storage","Get-PhysicalDisk","Zeigt physische Laufwerke samt Gesundheitszustand"],
+["Storage","Get-StoragePool","Listet Speicherpools der Speicherplätze"],
+["Storage","New-VirtualDisk","Erstellt einen virtuellen Datenträger in einem Pool"],
+["Storage","Mount-DiskImage","Bindet eine ISO- oder VHD-Datei ein"],
+["Storage","Dismount-DiskImage","Hebt die Einbindung wieder auf"],
+["Storage","Get-DiskImage","Zeigt eingebundene Abbilddateien"],
+
+["GroupPolicy","Get-GPO","Zeigt Gruppenrichtlinienobjekte der Domäne"],
+["GroupPolicy","New-GPO","Erstellt ein neues GPO"],
+["GroupPolicy","Remove-GPO","Löscht ein GPO"],
+["GroupPolicy","Rename-GPO","Benennt ein GPO um"],
+["GroupPolicy","Copy-GPO","Kopiert ein GPO, auch in eine andere Domäne"],
+["GroupPolicy","Backup-GPO","Sichert GPOs - die einzige eingebaute Versionierung"],
+["GroupPolicy","Restore-GPO","Spielt gesicherte GPOs zurück"],
+["GroupPolicy","Import-GPO","Importiert Einstellungen aus einer Sicherung in ein bestehendes GPO"],
+["GroupPolicy","New-GPLink","Verknüpft ein GPO mit Standort, Domäne oder OU"],
+["GroupPolicy","Set-GPLink","Ändert Reihenfolge, Status oder Erzwingung einer Verknüpfung"],
+["GroupPolicy","Remove-GPLink","Löst eine Verknüpfung"],
+["GroupPolicy","Get-GPInheritance","Zeigt Vererbung und wirksame Verknüpfungen einer OU"],
+["GroupPolicy","Set-GPInheritance","Blockiert die Vererbung an einer OU oder hebt die Blockade auf"],
+["GroupPolicy","Get-GPResultantSetOfPolicy","Erzeugt einen RSoP-Bericht für Benutzer und Rechner"],
+["GroupPolicy","Invoke-GPUpdate","Aktualisiert Richtlinien, auch auf entfernten Rechnern"],
+["GroupPolicy","Get-GPRegistryValue","Liest einen Registrierungswert aus einem GPO"],
+["GroupPolicy","Set-GPRegistryValue","Setzt einen Registrierungswert in einem GPO"],
+["GroupPolicy","Get-GPPermission","Zeigt die Berechtigungen eines GPO - Grundlage der Sicherheitsfilterung"],
+["GroupPolicy","Set-GPPermission","Ändert die Sicherheitsfilterung"],
+["GroupPolicy","Get-GPStarterGPO","Listet Starter-GPOs als Vorlagen"],
+["GroupPolicy","Get-GPOReport","Erzeugt einen HTML- oder XML-Bericht über ein GPO"]
+);
+
+CMDLET_DB.push(
+["ActiveDirectory","Get-ADUser","Fragt Benutzerkonten ab - Standard sind nur zehn Eigenschaften"],
+["ActiveDirectory","New-ADUser","Legt ein Benutzerkonto an"],
+["ActiveDirectory","Set-ADUser","Ändert Eigenschaften eines Kontos"],
+["ActiveDirectory","Remove-ADUser","Löscht ein Benutzerkonto"],
+["ActiveDirectory","Enable-ADAccount","Aktiviert ein Konto"],
+["ActiveDirectory","Disable-ADAccount","Deaktiviert ein Konto - der erste Schritt beim Austritt"],
+["ActiveDirectory","Unlock-ADAccount","Hebt eine Kontosperrung auf"],
+["ActiveDirectory","Set-ADAccountPassword","Setzt ein Kennwort zurück oder ändert es"],
+["ActiveDirectory","Set-ADAccountExpiration","Setzt ein Ablaufdatum, etwa für Praktikanten"],
+["ActiveDirectory","Clear-ADAccountExpiration","Entfernt das Ablaufdatum"],
+["ActiveDirectory","Set-ADAccountControl","Ändert Flags wie Kennwort läuft nie ab"],
+["ActiveDirectory","Search-ADAccount","Findet gesperrte, deaktivierte, abgelaufene oder inaktive Konten"],
+["ActiveDirectory","Get-ADAccountAuthorizationGroup","Zeigt alle wirksamen Gruppen inklusive verschachtelter"],
+["ActiveDirectory","Get-ADPrincipalGroupMembership","Zeigt die direkten Gruppen eines Kontos"],
+["ActiveDirectory","Add-ADPrincipalGroupMembership","Nimmt ein Konto in mehrere Gruppen auf"],
+["ActiveDirectory","Remove-ADPrincipalGroupMembership","Entfernt ein Konto aus Gruppen"],
+["ActiveDirectory","Get-ADGroup","Fragt Gruppen ab, gefiltert nach Bereich oder Art"],
+["ActiveDirectory","New-ADGroup","Erstellt eine Gruppe mit Bereich und Kategorie"],
+["ActiveDirectory","Set-ADGroup","Ändert eine Gruppe, etwa ihren Bereich"],
+["ActiveDirectory","Remove-ADGroup","Löscht eine Gruppe"],
+["ActiveDirectory","Get-ADGroupMember","Listet Mitglieder, mit -Recursive auch verschachtelte"],
+["ActiveDirectory","Add-ADGroupMember","Fügt Mitglieder hinzu"],
+["ActiveDirectory","Remove-ADGroupMember","Entfernt Mitglieder"],
+["ActiveDirectory","Get-ADComputer","Fragt Computerkonten ab"],
+["ActiveDirectory","New-ADComputer","Legt ein Computerkonto vor der Bereitstellung an"],
+["ActiveDirectory","Set-ADComputer","Ändert ein Computerkonto"],
+["ActiveDirectory","Remove-ADComputer","Löscht ein Computerkonto"],
+["ActiveDirectory","Get-ADOrganizationalUnit","Fragt Organisationseinheiten ab"],
+["ActiveDirectory","New-ADOrganizationalUnit","Erstellt eine OU"],
+["ActiveDirectory","Set-ADOrganizationalUnit","Ändert eine OU, etwa den Löschschutz"],
+["ActiveDirectory","Remove-ADOrganizationalUnit","Löscht eine OU"],
+["ActiveDirectory","Get-ADObject","Universelle Abfrage über alle Objektarten, auch gelöschte"],
+["ActiveDirectory","Set-ADObject","Ändert beliebige Attribute eines Objekts"],
+["ActiveDirectory","New-ADObject","Erzeugt ein Objekt beliebiger Klasse"],
+["ActiveDirectory","Remove-ADObject","Löscht ein Objekt"],
+["ActiveDirectory","Rename-ADObject","Benennt ein Objekt um"],
+["ActiveDirectory","Move-ADObject","Verschiebt Objekte in eine andere OU"],
+["ActiveDirectory","Restore-ADObject","Stellt ein Objekt aus dem AD-Papierkorb wieder her"],
+["ActiveDirectory","Get-ADDomain","Zeigt Domäneninformationen und die Rollen der Domänenebene"],
+["ActiveDirectory","Set-ADDomain","Ändert Domäneneigenschaften"],
+["ActiveDirectory","Get-ADForest","Zeigt Gesamtstruktur, Schemamaster und globale Kataloge"],
+["ActiveDirectory","Set-ADForest","Ändert Eigenschaften der Gesamtstruktur"],
+["ActiveDirectory","Get-ADDomainController","Listet Domänencontroller, -Discover findet den nächsten"],
+["ActiveDirectory","Get-ADRootDSE","Liest die Stammdaten des Verzeichnisses, etwa unterstützte Fähigkeiten"],
+["ActiveDirectory","Get-ADTrust","Zeigt Vertrauensstellungen"],
+["ActiveDirectory","Get-ADReplicationPartnerMetadata","Zeigt den Replikationsstatus je Partner"],
+["ActiveDirectory","Get-ADReplicationFailure","Listet Replikationsfehler"],
+["ActiveDirectory","Get-ADReplicationSite","Zeigt Standorte"],
+["ActiveDirectory","Get-ADReplicationSubnet","Zeigt die Subnetz-zu-Standort-Zuordnung"],
+["ActiveDirectory","Sync-ADObject","Repliziert ein einzelnes Objekt sofort zu einem anderen DC"],
+["ActiveDirectory","Get-ADDefaultDomainPasswordPolicy","Zeigt die Kennwortrichtlinie der Domäne"],
+["ActiveDirectory","Set-ADDefaultDomainPasswordPolicy","Ändert die Kennwortrichtlinie"],
+["ActiveDirectory","Get-ADFineGrainedPasswordPolicy","Zeigt abgestufte Kennwortrichtlinien"],
+["ActiveDirectory","New-ADFineGrainedPasswordPolicy","Legt eine eigene Richtlinie für bestimmte Gruppen an"],
+["ActiveDirectory","Get-ADUserResultantPasswordPolicy","Zeigt, welche Kennwortrichtlinie für ein Konto tatsächlich gilt"],
+["ActiveDirectory","Get-ADOptionalFeature","Zeigt optionale Merkmale, etwa den AD-Papierkorb"],
+["ActiveDirectory","Enable-ADOptionalFeature","Schaltet ein Merkmal frei - nicht umkehrbar"],
+["ActiveDirectory","Get-ADServiceAccount","Zeigt verwaltete Dienstkonten"],
+["ActiveDirectory","New-ADServiceAccount","Legt ein gruppenverwaltetes Dienstkonto an"],
+["ActiveDirectory","Install-ADServiceAccount","Richtet ein Dienstkonto auf einem Server ein"],
+["ActiveDirectory","Test-ADServiceAccount","Prüft, ob ein Dienstkonto nutzbar ist"],
+["ActiveDirectory","Get-ADAuthenticationPolicy","Zeigt Authentifizierungsrichtlinien"],
+["ActiveDirectory","Install-ADDSForest","Errichtet eine neue Gesamtstruktur"],
+["ActiveDirectory","Install-ADDSDomain","Fügt der Gesamtstruktur eine Domäne hinzu"],
+["ActiveDirectory","Install-ADDSDomainController","Macht einen Server zum weiteren Domänencontroller"],
+["ActiveDirectory","Test-ADDSForestInstallation","Prüft die Voraussetzungen vor der Einrichtung"],
+["ActiveDirectory","Uninstall-ADDSDomainController","Stuft einen Domänencontroller zurück"],
+["ActiveDirectory","Move-ADDirectoryServerOperationMasterRole","Überträgt oder entreißt FSMO-Rollen"],
+["ActiveDirectory","Get-ADDirectoryServer","Zeigt Verzeichnisserver in einer Gesamtstruktur"]
+);
+
+/* =====================================================================
    ANWENDUNG
    ===================================================================== */
 
@@ -1640,6 +2740,7 @@ var ALL_CMDS = []
 
 var EXTRA_VIEWS = [
   {id:"befehle",  grp:"Nachschlagen", nav:"Befehlssuche", title:"Befehlssuche"},
+  {id:"katalog",  grp:"Nachschlagen", nav:"Cmdlet-Katalog", title:"Cmdlet-Katalog"},
   {id:"quiz",     grp:"Nachschlagen", nav:"Wissenstest",  title:"Wissenstest"},
   {id:"quellen",  grp:"Nachschlagen", nav:"Quellen",      title:"Quellen"},
   {id:"impressum",grp:"Rechtliches",  nav:"Impressum",    title:"Impressum"}
@@ -1650,6 +2751,8 @@ var state = {
   read: {},
   filter: "alle",
   suche: "",
+  katModul: "alle",
+  katSuche: "",
   quizIdx: 0, quizRichtig: 0, quizBeantwortet: 0
 };
 
@@ -1768,6 +2871,7 @@ function zeige(id){
   var kap = CHAPTERS.filter(function(c){ return c.id === id; })[0];
   if (kap) { kapitelZeichnen(main, kap); }
   else if (id === "befehle")   { befehleZeichnen(main); }
+  else if (id === "katalog")   { katalogZeichnen(main); }
   else if (id === "quiz")      { quizZeichnen(main); }
   else if (id === "quellen")   { quellenZeichnen(main); }
   else if (id === "impressum") { impressumZeichnen(main); }
@@ -1889,6 +2993,73 @@ function trefferZeichnen(){
   Array.prototype.forEach.call(liste.querySelectorAll(".cmdrow > button"), function(b){
     b.addEventListener("click", function(){ b.parentNode.classList.toggle("open"); });
   });
+}
+
+/* ---- Cmdlet-Katalog ---- */
+function katalogModule(){
+  var m = {}, reihenfolge = [];
+  CMDLET_DB.forEach(function(c){
+    if (!m[c[0]]) { m[c[0]] = 0; reihenfolge.push(c[0]); }
+    m[c[0]]++;
+  });
+  return reihenfolge.map(function(name){ return {name:name, anzahl:m[name]}; });
+}
+
+function katalogZeichnen(main){
+  var module = katalogModule();
+  var wrap = document.createElement("div");
+  wrap.className = "view on";
+  wrap.innerHTML =
+    '<div class="eyebrow">Nachschlagen</div>' +
+    "<h2>Cmdlet-Katalog</h2>" +
+    '<div class="lede">' + CMDLET_DB.length + " Cmdlets aus " + module.length +
+      " Modulen, so gruppiert, wie <code>Get-Command -Module</code> sie ausgibt. Das ist nicht der vollständige Bestand eines Systems, sondern die Module, die auf jedem Windows vorhanden sind, plus die Verwaltungsmodule für Netzwerk, Speicher und Active Directory.</div>" +
+    '<div class="searchbar">' +
+      '<input type="search" id="katfeld" placeholder="z. B. firewall, gruppe, partition, session" autocomplete="off" spellcheck="false">' +
+    "</div>" +
+    '<div class="selwrap"><select id="katmodul"><option value="alle">Alle Module (' + CMDLET_DB.length + ")</option>" +
+      module.map(function(m){ return '<option value="' + m.name + '">' + m.name + " (" + m.anzahl + ")</option>"; }).join("") +
+    "</select></div>" +
+    '<div class="counter" id="katzahl"></div>' +
+    '<div id="katliste"></div>';
+  main.appendChild(wrap);
+
+  var feld = wrap.querySelector("#katfeld");
+  feld.value = state.katSuche;
+  feld.addEventListener("input", function(){ state.katSuche = feld.value; katalogTreffer(); });
+
+  var sel = wrap.querySelector("#katmodul");
+  sel.value = state.katModul;
+  sel.addEventListener("change", function(){ state.katModul = sel.value; katalogTreffer(); });
+
+  katalogTreffer();
+}
+
+function katalogTreffer(){
+  var liste = document.getElementById("katliste");
+  var zahl  = document.getElementById("katzahl");
+  if (!liste) { return; }
+
+  var q = state.katSuche.toLowerCase().trim();
+  var treffer = CMDLET_DB.filter(function(c){
+    if (state.katModul !== "alle" && c[0] !== state.katModul) { return false; }
+    if (!q) { return true; }
+    return (c[1] + " " + c[2] + " " + c[0]).toLowerCase().indexOf(q) > -1;
+  });
+
+  zahl.textContent = treffer.length + " von " + CMDLET_DB.length + " Cmdlets";
+
+  if (!treffer.length) {
+    liste.innerHTML = '<div class="card">Kein Treffer. Die Suche greift auf Namen, Beschreibung und Modul zu - ein allgemeinerer Begriff hilft meist.</div>';
+    return;
+  }
+
+  var html = "", letztes = null;
+  treffer.forEach(function(c){
+    if (c[0] !== letztes) { html += '<div class="catline">' + c[0] + "</div>"; letztes = c[0]; }
+    html += '<div class="cmdlet"><span class="cn">' + esc(c[1]) + '</span><span class="cd">' + esc(c[2]) + "</span></div>";
+  });
+  liste.innerHTML = html;
 }
 
 /* ---- Wissenstest ---- */
