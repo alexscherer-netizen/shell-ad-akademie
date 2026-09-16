@@ -222,6 +222,36 @@ td code{white-space:normal}
   .cmdlet .cd{display:block;margin-top:.15rem}
 }
 
+/* ---------- Skript-Generator ---------- */
+.genstep{display:flex;align-items:center;gap:.5rem;margin:1.7rem 0 .6rem;
+  font-size:.74rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);font-family:var(--mono)}
+.gnum{display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;
+  background:#0f3038;color:var(--teal);font-size:.7rem;flex:0 0 auto}
+.genzweck{font-size:.88rem;color:var(--ink-dim);border-left:2px solid var(--line);padding-left:.75rem;margin:.5rem 0 0}
+.genfeld{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;flex-wrap:wrap}
+.genfeld label{font-size:.83rem;color:var(--ink-dim);flex:0 0 190px}
+.genfeld input[type=text],.genfeld input[type=number],.genfeld select{
+  flex:1;min-width:150px;background:var(--bg-deep);border:1px solid var(--line);border-radius:7px;
+  color:var(--ink);font-family:var(--mono);font-size:.83rem;padding:.42rem .55rem}
+.genfeld input:focus,.genfeld select:focus{outline:2px solid var(--teal);outline-offset:1px}
+.genfeld .gvar{font-family:var(--mono);font-size:.7rem;color:var(--ink-faint);flex:0 0 auto}
+.genfeld.schalter{margin:.2rem 0 .6rem}
+.genschalter,.genopt{display:flex;align-items:center;gap:.45rem;font-size:.83rem;color:var(--ink-dim);cursor:pointer}
+.genschalter input,.genopt input{accent-color:var(--teal);width:16px;height:16px}
+.genopts{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:.4rem .8rem}
+.genbtns{display:flex;gap:.6rem;flex-wrap:wrap;margin:.7rem 0 0}
+.genblock{display:flex;gap:.6rem;padding:.55rem 0;border-bottom:1px solid var(--line-soft);font-size:.86rem;color:var(--ink-dim)}
+.genblock:last-child{border-bottom:0}
+.genblock .bnum{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:#12242e;
+  color:var(--ink-faint);font-family:var(--mono);font-size:.68rem;display:flex;align-items:center;justify-content:center}
+.genblock b{display:block;color:#eafcf8;font-family:var(--mono);font-size:.8rem;margin-bottom:.15rem;font-weight:500}
+@media(max-width:620px){
+  .genfeld{display:block}
+  .genfeld label{display:block;margin-bottom:.2rem}
+  .genfeld input[type=text],.genfeld input[type=number],.genfeld select{width:100%}
+  .genfeld .gvar{display:none}
+}
+
 /* ---------- Quiz ---------- */
 .q{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:1rem;margin-bottom:.9rem}
 .q .qtext{font-weight:500;margin-bottom:.75rem;color:#eafcf8}
@@ -2730,6 +2760,696 @@ CMDLET_DB.push(
 );
 
 /* =====================================================================
+   SKRIPT-GENERATOR: Rezepte
+   Felder werden zu param-Einträgen, der Rumpf nutzt diese Variablen.
+   ===================================================================== */
+
+var REZEPTE = [
+{
+  id:"ad-benutzer", bereich:"Active Directory", name:"Benutzerkonto anlegen",
+  zweck:"Legt ein Konto in der gewünschten OU an, setzt ein Startkennwort und nimmt es in eine Gruppe auf.",
+  datei:"Neuer-ADBenutzer.ps1", module:["ActiveDirectory"], admin:true,
+  felder:[
+    {k:"Vorname",   l:"Vorname",              t:"text", v:"Anna"},
+    {k:"Nachname",  l:"Nachname",             t:"text", v:"Berger"},
+    {k:"Kuerzel",   l:"Anmeldename (sAMAccountName)", t:"text", v:"a.berger"},
+    {k:"OuPfad",    l:"Ziel-OU (DN)",         t:"text", v:"OU=Vertrieb,OU=Abteilungen,DC=firma,DC=local"},
+    {k:"Gruppe",    l:"Gruppe für die Aufnahme", t:"text", v:"G-Vertrieb"},
+    {k:"Abteilung", l:"Abteilung",            t:"text", v:"Vertrieb"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$domaene  = (Get-ADDomain).DNSRoot',
+      '$kennwort = Read-Host "Startkennwort für $Kuerzel" -AsSecureString',
+      '',
+      '$neuerBenutzer = @{',
+      '    Name                  = "$Vorname $Nachname"',
+      '    GivenName             = $Vorname',
+      '    Surname               = $Nachname',
+      '    DisplayName           = "$Nachname, $Vorname"',
+      '    SamAccountName        = $Kuerzel',
+      '    UserPrincipalName     = "$Kuerzel@$domaene"',
+      '    Path                  = $OuPfad',
+      '    Department            = $Abteilung',
+      '    AccountPassword       = $kennwort',
+      '    ChangePasswordAtLogon = $true',
+      '    Enabled               = $true',
+      '}',
+      '',
+      'if (Get-ADUser -Filter "SamAccountName -eq \'$Kuerzel\'") {',
+      '    Write-Warning "Konto $Kuerzel existiert bereits - Abbruch."',
+      '    return',
+      '}',
+      '',
+      'New-ADUser @neuerBenutzer -ErrorAction Stop',
+      'Add-ADGroupMember -Identity $Gruppe -Members $Kuerzel -ErrorAction Stop',
+      '',
+      'Get-ADUser $Kuerzel -Properties Department, MemberOf |',
+      '    Select-Object Name, SamAccountName, Department'
+    ],
+    schritte:[
+      ["Domäne ermitteln","Der UPN wird aus dem Anmeldenamen und dem DNS-Namen der Domäne gebaut - so ist er auch bei einem Umzug in eine andere Domäne korrekt."],
+      ["Kennwort abfragen","Read-Host -AsSecureString hält das Kennwort im Arbeitsspeicher, statt es im Skript oder im Befehlsverlauf abzulegen."],
+      ["Splatting-Tabelle","Alle Parameter als Hashtabelle. Das hält den Aufruf lesbar und erlaubt es, einzelne Werte je nach Bedingung zu ergänzen."],
+      ["Doppelte Anlage verhindern","Die Prüfung vorab ist billiger als ein Fehler mitten im Ablauf - und verhindert ein zweites Konto mit demselben Namen."],
+      ["Anlegen und aufnehmen","Ohne -Enabled und -AccountPassword entstünde ein deaktiviertes Konto ohne Kennwort. Die Gruppe wirkt erst nach der nächsten Anmeldung."],
+      ["Kontrollausgabe","Die Rückgabe ist ein Objekt und lässt sich weiterverarbeiten - nicht bloß eine Erfolgsmeldung."]
+    ]
+  };}
+},
+{
+  id:"ad-csv", bereich:"Active Directory", name:"Konten aus CSV anlegen",
+  zweck:"Liest eine Liste ein und legt für jede Zeile ein Konto in der passenden Abteilungs-OU an.",
+  datei:"Import-ADBenutzer.ps1", module:["ActiveDirectory"], admin:true,
+  felder:[
+    {k:"Pfad",      l:"Pfad zur CSV-Datei",   t:"text", v:"C:\\Import\\neue-mitarbeiter.csv"},
+    {k:"Trenner",   l:"Trennzeichen",         t:"select", v:";", opt:[";",","]},
+    {k:"OuBasis",   l:"Basis-OU (DN)",        t:"text", v:"OU=Abteilungen,DC=firma,DC=local"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '# Erwartete Spalten: Vorname;Nachname;Kuerzel;Abteilung',
+      '$startkennwort = Read-Host "Startkennwort für alle neuen Konten" -AsSecureString',
+      '$domaene       = (Get-ADDomain).DNSRoot',
+      '$bericht       = [System.Collections.Generic.List[object]]::new()',
+      '',
+      'Import-Csv -Path $Pfad -Delimiter $Trenner -Encoding UTF8 | ForEach-Object {',
+      '',
+      '    $konto = $_.Kuerzel',
+      '',
+      '    if (Get-ADUser -Filter "SamAccountName -eq \'$konto\'") {',
+      '        Write-Warning "Übersprungen, existiert bereits: $konto"',
+      '        return',
+      '    }',
+      '',
+      '    $params = @{',
+      '        Name                  = "$($_.Vorname) $($_.Nachname)"',
+      '        GivenName             = $_.Vorname',
+      '        Surname               = $_.Nachname',
+      '        SamAccountName        = $konto',
+      '        UserPrincipalName     = "$konto@$domaene"',
+      '        Department            = $_.Abteilung',
+      '        Path                  = "OU=$($_.Abteilung),$OuBasis"',
+      '        AccountPassword       = $startkennwort',
+      '        ChangePasswordAtLogon = $true',
+      '        Enabled               = $true',
+      '    }',
+      '',
+      '    try {',
+      '        New-ADUser @params -ErrorAction Stop',
+      '        $bericht.Add([PSCustomObject]@{ Konto = $konto; Status = "angelegt" })',
+      '    }',
+      '    catch {',
+      '        $bericht.Add([PSCustomObject]@{ Konto = $konto; Status = "FEHLER: $($_.Exception.Message)" })',
+      '    }',
+      '}',
+      '',
+      '$bericht'
+    ],
+    schritte:[
+      ["Kennwort einmal abfragen","Ein einziger SecureString für den gesamten Durchlauf, statt für jede Zeile erneut zu fragen."],
+      ["Sammelliste statt Array","Eine generische Liste ist beim Anhängen deutlich schneller als ein Array mit +=, das bei jedem Schritt neu aufgebaut würde."],
+      ["Import-Csv","Jede Zeile wird ein Objekt, jede Spaltenüberschrift eine Eigenschaft. Deshalb funktioniert $_.Vorname ohne jede Textzerlegung."],
+      ["return statt continue","Innerhalb von ForEach-Object beendet return nur den aktuellen Durchlauf - continue würde hier nicht wie erwartet wirken."],
+      ["Ziel-OU aus der Abteilung","Der DN wird aus der Spalte zusammengesetzt. Fehlt die OU, schlägt genau diese Zeile fehl, der Rest läuft weiter."],
+      ["try/catch je Zeile","Ein Fehler bei einem Konto darf den gesamten Import nicht abbrechen. Das Ergebnis jeder Zeile landet im Bericht."]
+    ]
+  };}
+},
+{
+  id:"ad-inaktiv", bereich:"Active Directory", name:"Inaktive Konten finden",
+  zweck:"Sucht Konten ohne Anmeldung seit X Tagen und deaktiviert sie auf Wunsch.",
+  datei:"Get-InaktiveKonten.ps1", module:["ActiveDirectory"], admin:false,
+  felder:[
+    {k:"Tage",       l:"Inaktiv seit (Tage)", t:"int",  v:"90"},
+    {k:"Suchbasis",  l:"Such-OU (DN, leer = ganze Domäne)", t:"text", v:"OU=Benutzer,DC=firma,DC=local"},
+    {k:"Deaktivieren", l:"Gefundene Konten deaktivieren", t:"switch", v:"false"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$grenze = (New-TimeSpan -Days $Tage)',
+      '',
+      '$konten = Search-ADAccount -AccountInactive -TimeSpan $grenze -UsersOnly |',
+      '    Where-Object { $_.Enabled -eq $true }',
+      '',
+      'if ($Suchbasis) {',
+      '    $konten = $konten | Where-Object { $_.DistinguishedName -like "*$Suchbasis" }',
+      '}',
+      '',
+      '$ergebnis = $konten | ForEach-Object {',
+      '    $u = Get-ADUser $_.SamAccountName -Properties LastLogonDate, Department, Description',
+      '    [PSCustomObject]@{',
+      '        Konto           = $u.SamAccountName',
+      '        Name            = $u.Name',
+      '        Abteilung       = $u.Department',
+      '        LetzteAnmeldung = $u.LastLogonDate',
+      '        TageInaktiv     = if ($u.LastLogonDate) { [int]((Get-Date) - $u.LastLogonDate).TotalDays } else { "nie angemeldet" }',
+      '    }',
+      '}',
+      '',
+      'if ($Deaktivieren) {',
+      '    foreach ($k in $ergebnis) {',
+      '        if ($PSCmdlet.ShouldProcess($k.Konto, "Konto deaktivieren")) {',
+      '            Disable-ADAccount -Identity $k.Konto -ErrorAction Stop',
+      '            Write-Verbose "Deaktiviert: $($k.Konto)"',
+      '        }',
+      '    }',
+      '}',
+      '',
+      '$ergebnis | Sort-Object LetzteAnmeldung'
+    ],
+    schritte:[
+      ["Search-ADAccount","Das Cmdlet kennt -AccountInactive, -LockedOut, -AccountDisabled und -AccountExpired. Der Domänencontroller übernimmt die Suche."],
+      ["Nur aktive Konten","Bereits deaktivierte Konten müssen nicht erneut behandelt werden."],
+      ["Eingrenzung auf eine OU","Der Vergleich über den DN begrenzt auf einen Teilbaum, ohne eine zweite Abfrage."],
+      ["LastLogonDate mit Vorbehalt","Der Wert wird nur alle 9 bis 14 Tage repliziert. Für einen Audit reicht das, für minutengenaue Aussagen nicht."],
+      ["ShouldProcess","Das Deaktivieren läuft über die Abfrage - ein Aufruf mit -WhatIf zeigt damit zuerst, welche Konten betroffen wären."],
+      ["Objekte zurückgeben","Das Ergebnis lässt sich direkt weiter nach CSV exportieren oder an Out-GridView schicken."]
+    ]
+  };}
+},
+{
+  id:"ad-gruppen", bereich:"Active Directory", name:"Gruppenmitglieder auflösen",
+  zweck:"Löst eine Gruppe rekursiv auf und zeigt, wer tatsächlich berechtigt ist.",
+  datei:"Get-GruppenBericht.ps1", module:["ActiveDirectory"], admin:false,
+  felder:[
+    {k:"Gruppe",  l:"Gruppenname", t:"text", v:"FS-Vertrieb-Aendern"},
+    {k:"NurAktive", l:"Nur aktive Konten anzeigen", t:"switch", v:"true"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$mitglieder = Get-ADGroupMember -Identity $Gruppe -Recursive -ErrorAction Stop',
+      '',
+      '$ergebnis = foreach ($m in $mitglieder) {',
+      '',
+      '    if ($m.objectClass -ne "user") { continue }',
+      '',
+      '    $u = Get-ADUser $m.SamAccountName -Properties Department, Enabled, LastLogonDate',
+      '',
+      '    if ($NurAktive -and -not $u.Enabled) { continue }',
+      '',
+      '    [PSCustomObject]@{',
+      '        Gruppe          = $Gruppe',
+      '        Konto           = $u.SamAccountName',
+      '        Name            = $u.Name',
+      '        Abteilung       = $u.Department',
+      '        Aktiv           = $u.Enabled',
+      '        LetzteAnmeldung = $u.LastLogonDate',
+      '    }',
+      '}',
+      '',
+      'Write-Verbose "$($ergebnis.Count) berechtigte Konten in $Gruppe"',
+      '$ergebnis | Sort-Object Abteilung, Name'
+    ],
+    schritte:[
+      ["-Recursive","Ohne diesen Schalter fehlen alle Konten, die nur über eine verschachtelte Gruppe berechtigt sind - im AGDLP-Muster wäre das die Mehrheit."],
+      ["objectClass prüfen","Mitglieder können Benutzer, Computer oder Gruppen sein. Der Bericht soll nur Personen enthalten."],
+      ["Nachladen der Eigenschaften","Get-ADGroupMember liefert nur wenige Felder. Abteilung und Anmeldedatum kommen aus Get-ADUser."],
+      ["Filter auf aktive Konten","Deaktivierte Konten in einer Berechtigungsgruppe sind ein typischer Prüfbefund - deshalb abschaltbar."]
+    ]
+  };}
+},
+{
+  id:"ad-entsperren", bereich:"Active Directory", name:"Gesperrte Konten entsperren",
+  zweck:"Findet gesperrte Konten, zeigt die Quelle der Fehlversuche und entsperrt sie.",
+  datei:"Unlock-Konten.ps1", module:["ActiveDirectory"], admin:true,
+  felder:[
+    {k:"Konto",   l:"Einzelnes Konto (leer = alle gesperrten)", t:"text", v:""},
+    {k:"Quelle",  l:"Sperrquelle aus dem Protokoll ermitteln",  t:"switch", v:"true"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$gesperrt = if ($Konto) {',
+      '    Get-ADUser -Identity $Konto -Properties LockedOut, LastBadPasswordAttempt',
+      '} else {',
+      '    Search-ADAccount -LockedOut -UsersOnly',
+      '}',
+      '',
+      'if (-not $gesperrt) {',
+      '    Write-Host "Keine gesperrten Konten gefunden." -ForegroundColor Green',
+      '    return',
+      '}',
+      '',
+      'if ($Quelle) {',
+      '    $pdc = (Get-ADDomain).PDCEmulator',
+      '    $sperren = Get-WinEvent -ComputerName $pdc -MaxEvents 50 -FilterHashtable @{',
+      '        LogName = "Security"; Id = 4740',
+      '    } -ErrorAction SilentlyContinue',
+      '}',
+      '',
+      'foreach ($k in $gesperrt) {',
+      '',
+      '    $von = ($sperren | Where-Object { $_.Properties[0].Value -eq $k.SamAccountName } |',
+      '            Select-Object -First 1).Properties[1].Value',
+      '',
+      '    [PSCustomObject]@{',
+      '        Konto  = $k.SamAccountName',
+      '        Name   = $k.Name',
+      '        Quelle = if ($von) { $von } else { "unbekannt" }',
+      '    }',
+      '',
+      '    if ($PSCmdlet.ShouldProcess($k.SamAccountName, "Konto entsperren")) {',
+      '        Unlock-ADAccount -Identity $k.SamAccountName -ErrorAction Stop',
+      '    }',
+      '}'
+    ],
+    schritte:[
+      ["Einzeln oder alle","Ohne Kontonamen sucht Search-ADAccount alle gesperrten Konten der Domäne."],
+      ["Protokoll auf dem PDC-Emulator","Ereignis-ID 4740 wird auf dem PDC-Emulator geschrieben. Dort steht auch der Rechner, von dem die Fehlversuche kamen."],
+      ["Quelle zuordnen","Properties[0] ist der Kontoname, Properties[1] der Quellrechner - meist ein Gerät mit altem gespeichertem Kennwort."],
+      ["Entsperren","Unlock-ADAccount ändert das Kennwort nicht. Wer es zurücksetzen will, braucht zusätzlich Set-ADAccountPassword -Reset."]
+    ]
+  };}
+},
+
+{
+  id:"datei-backup", bereich:"Dateien & Backup", name:"Ordner spiegeln",
+  zweck:"Spiegelt ein Verzeichnis mit robocopy, schreibt ein Protokoll und wertet den Rückgabecode aus.",
+  datei:"Sync-Ordner.ps1", module:[], admin:false,
+  felder:[
+    {k:"Quelle",     l:"Quellordner",            t:"text", v:"C:\\Daten"},
+    {k:"Ziel",       l:"Zielordner",             t:"text", v:"D:\\Backup\\Daten"},
+    {k:"Protokoll",  l:"Protokollordner",        t:"text", v:"C:\\Protokoll"},
+    {k:"Spiegeln",   l:"Spiegeln (/mir löscht im Ziel)", t:"switch", v:"false"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      'if (-not (Test-Path $Quelle)) { throw "Quelle nicht erreichbar: $Quelle" }',
+      'if (-not (Test-Path $Protokoll)) { New-Item $Protokoll -ItemType Directory | Out-Null }',
+      '',
+      '$logdatei = Join-Path $Protokoll "robocopy-$(Get-Date -Format yyyyMMdd-HHmm).log"',
+      '$modus    = if ($Spiegeln) { "/mir" } else { "/e" }',
+      '',
+      '$argumente = @($Quelle, $Ziel, $modus, "/copy:DAT", "/r:2", "/w:5", "/np", "/tee", "/log+:$logdatei")',
+      '',
+      'Write-Verbose "robocopy $($argumente -join \' \')"',
+      'robocopy @argumente',
+      '$code = $LASTEXITCODE',
+      '',
+      '# robocopy: 0-7 sind Erfolg, ab 8 liegt ein Fehler vor',
+      '$bewertung = switch ($code) {',
+      '    0       { "Keine Änderungen nötig" }',
+      '    1       { "Dateien kopiert" }',
+      '    2       { "Zusätzliche Dateien im Ziel" }',
+      '    3       { "Kopiert, zusätzliche Dateien vorhanden" }',
+      '    default { if ($code -ge 8) { "FEHLER" } else { "Erfolg mit Hinweisen" } }',
+      '}',
+      '',
+      '[PSCustomObject]@{',
+      '    Quelle     = $Quelle',
+      '    Ziel       = $Ziel',
+      '    Rueckgabe  = $code',
+      '    Bewertung  = $bewertung',
+      '    Protokoll  = $logdatei',
+      '}',
+      '',
+      'if ($code -ge 8) { throw "robocopy meldet Fehler $code - siehe $logdatei" }'
+    ],
+    schritte:[
+      ["Voraussetzungen prüfen","Ein fehlender Quellpfad soll sofort auffallen, nicht erst im robocopy-Protokoll."],
+      ["Protokollname mit Zeitstempel","Jeder Lauf bekommt eine eigene Datei - so bleibt nachvollziehbar, was wann übertragen wurde."],
+      ["/mir bewusst schalten","Spiegeln löscht im Ziel alles, was in der Quelle fehlt. Deshalb ist es ein eigener Schalter und nicht der Standard."],
+      ["Argumente als Array","robocopy ist ein externes Programm. Ein Array mit @ übergeben schützt vor Problemen mit Leerzeichen in Pfaden."],
+      ["Rückgabecode auswerten","$LASTEXITCODE gilt für externe Programme. Bei robocopy sind Werte unter 8 Erfolg - wer auf ungleich 0 prüft, meldet Fehlalarm."],
+      ["Fehler weiterreichen","throw sorgt dafür, dass eine Aufgabenplanung den Lauf als fehlgeschlagen erkennt."]
+    ]
+  };}
+},
+{
+  id:"datei-aufraeumen", bereich:"Dateien & Backup", name:"Alte Dateien aufräumen",
+  zweck:"Löscht Dateien, die älter als X Tage sind, und zeigt vorher, wie viel Platz frei wird.",
+  datei:"Remove-AlteDateien.ps1", module:[], admin:false,
+  felder:[
+    {k:"Ordner",  l:"Zielordner",           t:"text", v:"C:\\Logs"},
+    {k:"Muster",  l:"Dateimuster",          t:"text", v:"*.log"},
+    {k:"Tage",    l:"Älter als (Tage)",     t:"int",  v:"30"},
+    {k:"MitUnterordnern", l:"Unterordner einbeziehen", t:"switch", v:"true"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$stichtag = (Get-Date).AddDays(-$Tage)',
+      '',
+      '$dateien = Get-ChildItem -Path $Ordner -Filter $Muster -File -Recurse:$MitUnterordnern -ErrorAction Stop |',
+      '    Where-Object { $_.LastWriteTime -lt $stichtag }',
+      '',
+      'if (-not $dateien) {',
+      '    Write-Host "Nichts zu löschen - keine Datei ist älter als $Tage Tage." -ForegroundColor Green',
+      '    return',
+      '}',
+      '',
+      '$summe = ($dateien | Measure-Object Length -Sum).Sum',
+      'Write-Verbose "$($dateien.Count) Dateien, $([math]::Round($summe/1MB,1)) MB"',
+      '',
+      'foreach ($d in $dateien) {',
+      '    if ($PSCmdlet.ShouldProcess($d.FullName, "Löschen")) {',
+      '        Remove-Item $d.FullName -Force -ErrorAction Stop',
+      '    }',
+      '}',
+      '',
+      '[PSCustomObject]@{',
+      '    Ordner    = $Ordner',
+      '    Anzahl    = $dateien.Count',
+      '    FreiMB    = [math]::Round($summe/1MB,1)',
+      '    Stichtag  = $stichtag',
+      '}'
+    ],
+    schritte:[
+      ["Stichtag berechnen","AddDays mit negativem Wert liefert den Zeitpunkt in der Vergangenheit, gegen den verglichen wird."],
+      ["-File und -Recurse:$Wert","-File schließt Ordner aus. Die Schreibweise -Recurse:$Variable schaltet einen Schalter über eine Variable."],
+      ["LastWriteTime statt CreationTime","Beim Aufräumen zählt fast immer die letzte Änderung, nicht das Anlegedatum - bei kopierten Dateien unterscheidet sich beides deutlich."],
+      ["Erst messen, dann löschen","Die Größensumme vorab macht sichtbar, ob sich der Lauf überhaupt lohnt."],
+      ["ShouldProcess je Datei","Mit -WhatIf gibt das Skript die vollständige Liste aus, ohne etwas zu entfernen. Löschen umgeht den Papierkorb."]
+    ]
+  };}
+},
+{
+  id:"datei-gross", bereich:"Dateien & Backup", name:"Speicherfresser finden",
+  zweck:"Ermittelt die größten Dateien und Ordner eines Laufwerks - der erste Schritt bei vollem Datenträger.",
+  datei:"Get-Speicherfresser.ps1", module:[], admin:false,
+  felder:[
+    {k:"Pfad",   l:"Startordner",            t:"text", v:"C:\\"},
+    {k:"Anzahl", l:"Wie viele Treffer",      t:"int",  v:"20"},
+    {k:"MinMB",  l:"Mindestgröße in MB",     t:"int",  v:"100"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      'Write-Verbose "Durchsuche $Pfad - das kann bei großen Laufwerken dauern."',
+      '',
+      '$dateien = Get-ChildItem -Path $Pfad -File -Recurse -Force -ErrorAction SilentlyContinue |',
+      '    Where-Object { $_.Length -gt ($MinMB * 1MB) }',
+      '',
+      '$groessteDateien = $dateien |',
+      '    Sort-Object Length -Descending |',
+      '    Select-Object -First $Anzahl @{n="GroesseMB"; e={[math]::Round($_.Length/1MB,1)}},',
+      '                                 @{n="Geaendert"; e={$_.LastWriteTime}},',
+      '                                 FullName',
+      '',
+      '$groessteOrdner = $dateien |',
+      '    Group-Object DirectoryName |',
+      '    Select-Object @{n="GroesseMB"; e={[math]::Round((($_.Group | Measure-Object Length -Sum).Sum)/1MB,1)}},',
+      '                  @{n="Dateien";   e={$_.Count}},',
+      '                  @{n="Ordner";    e={$_.Name}} |',
+      '    Sort-Object GroesseMB -Descending | Select-Object -First $Anzahl',
+      '',
+      'Write-Host "`nGrößte Dateien:" -ForegroundColor Cyan',
+      '$groessteDateien | Format-Table -AutoSize',
+      '',
+      'Write-Host "`nGrößte Ordner:" -ForegroundColor Cyan',
+      '$groessteOrdner | Format-Table -AutoSize'
+    ],
+    schritte:[
+      ["-ErrorAction SilentlyContinue","Auf einem Systemlaufwerk gibt es immer Ordner ohne Zugriffsrecht. Ohne diesen Schalter bricht der Durchlauf mit Fehlerlawinen ab."],
+      ["Vorfiltern nach Größe","Kleine Dateien fliegen früh raus. Das spart bei einem vollen Laufwerk erheblich Zeit und Arbeitsspeicher."],
+      ["Berechnete Eigenschaften","Die Umrechnung in MB passiert in der Ausgabe, nicht in den Daten - so bleibt nach Bytes sortierbar."],
+      ["Group-Object für Ordner","Dieselbe Datenmenge zweimal ausgewertet: einmal je Datei, einmal je Verzeichnis."],
+      ["Format-Table am Ende","Weil hier nur angezeigt und nicht weiterverarbeitet wird, ist die Formatierung an dieser Stelle zulässig."]
+    ]
+  };}
+}
+];
+
+REZEPTE.push(
+{
+  id:"netz-erreichbar", bereich:"Netzwerk & Fehlersuche", name:"Erreichbarkeit prüfen",
+  zweck:"Testet eine Liste von Rechnern auf Erreichbarkeit und löst die Namen auf.",
+  datei:"Test-Erreichbarkeit.ps1", module:[], admin:false,
+  felder:[
+    {k:"Ziele",   l:"Rechner, durch Komma getrennt", t:"text", v:"dc01,srv01,srv02"},
+    {k:"Versuche", l:"Pings je Ziel",                t:"int",  v:"2"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$liste = $Ziele -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ }',
+      '',
+      '$ergebnis = foreach ($ziel in $liste) {',
+      '',
+      '    $erreichbar = Test-Connection -ComputerName $ziel -Count $Versuche -Quiet -ErrorAction SilentlyContinue',
+      '',
+      '    $dns = try { (Resolve-DnsName $ziel -ErrorAction Stop | Where-Object Type -eq "A" |',
+      '                  Select-Object -First 1).IPAddress } catch { "nicht auflösbar" }',
+      '',
+      '    [PSCustomObject]@{',
+      '        Ziel        = $ziel',
+      '        Erreichbar  = $erreichbar',
+      '        IPAdresse   = $dns',
+      '        Geprueft    = Get-Date -Format "HH:mm:ss"',
+      '    }',
+      '}',
+      '',
+      '$ergebnis | Sort-Object Erreichbar, Ziel',
+      '',
+      '$aus = $ergebnis | Where-Object { -not $_.Erreichbar }',
+      'if ($aus) { Write-Warning "Nicht erreichbar: $($aus.Ziel -join \', \')" }'
+    ],
+    schritte:[
+      ["Liste zerlegen und säubern","-split liefert auch leere Einträge, wenn jemand ein Komma zu viel setzt. Trim und Where fangen das ab."],
+      ["-Quiet","Damit liefert Test-Connection nur True oder False statt vier Antwortobjekten - genau richtig für eine Übersicht."],
+      ["Namensauflösung getrennt prüfen","Ein Ziel kann auflösbar, aber nicht erreichbar sein - oder umgekehrt. Beides zu trennen zeigt sofort, wo das Problem liegt."],
+      ["Warnung am Ende","Die Zusammenfassung spart das Durchsuchen der Tabelle, wenn nur ein Rechner von zwanzig fehlt."]
+    ]
+  };}
+},
+{
+  id:"netz-ports", bereich:"Netzwerk & Fehlersuche", name:"Portprüfung gegen einen Server",
+  zweck:"Prüft die wichtigsten Dienstports eines Servers - der Standardtest bei AD- und Freigabeproblemen.",
+  datei:"Test-Ports.ps1", module:[], admin:false,
+  felder:[
+    {k:"Server", l:"Zielserver",                 t:"text", v:"dc01.firma.local"},
+    {k:"Ports",  l:"Ports, durch Komma getrennt", t:"text", v:"53,88,135,389,445,636,3268,9389"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$bezeichnung = @{',
+      '    53   = "DNS"',
+      '    88   = "Kerberos"',
+      '    135  = "RPC Endpoint Mapper"',
+      '    389  = "LDAP"',
+      '    445  = "SMB"',
+      '    464  = "Kennwortänderung"',
+      '    636  = "LDAPS"',
+      '    3268 = "Globaler Katalog"',
+      '    3269 = "Globaler Katalog über TLS"',
+      '    5985 = "WinRM über HTTP"',
+      '    5986 = "WinRM über HTTPS"',
+      '    9389 = "AD Web Services"',
+      '}',
+      '',
+      '$liste = $Ports -split "," | ForEach-Object { [int]$_.Trim() }',
+      '',
+      '$liste | ForEach-Object {',
+      '    $port = $_',
+      '    $test = Test-NetConnection -ComputerName $Server -Port $port -WarningAction SilentlyContinue',
+      '',
+      '    [PSCustomObject]@{',
+      '        Port    = $port',
+      '        Dienst  = if ($bezeichnung.ContainsKey($port)) { $bezeichnung[$port] } else { "-" }',
+      '        Offen   = $test.TcpTestSucceeded',
+      '        Server  = $Server',
+      '    }',
+      '} | Sort-Object Port'
+    ],
+    schritte:[
+      ["Zuordnungstabelle","Eine Hashtabelle macht aus der Portnummer einen lesbaren Dienstnamen - ohne lange if-Kette."],
+      ["Umwandlung in Zahlen","-split liefert Text. Ohne [int] schlägt der Vergleich mit den Schlüsseln der Hashtabelle fehl."],
+      ["Test-NetConnection -Port","Ersetzt telnet vollständig und liefert das Ergebnis als Objekt statt als schwarzem Bildschirm."],
+      ["-WarningAction SilentlyContinue","Bei einem geschlossenen Port gibt das Cmdlet sonst eine mehrzeilige Warnung aus, die die Tabelle unlesbar macht."]
+    ]
+  };}
+},
+{
+  id:"netz-doku", bereich:"Netzwerk & Fehlersuche", name:"Netzwerkkonfiguration dokumentieren",
+  zweck:"Sammelt Adapter, Adressen, DNS-Server und Routen eines Rechners für die Dokumentation.",
+  datei:"Get-NetzwerkDoku.ps1", module:[], admin:false,
+  felder:[
+    {k:"NurAktive", l:"Nur aktive Adapter", t:"switch", v:"true"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$adapter = Get-NetAdapter',
+      'if ($NurAktive) { $adapter = $adapter | Where-Object Status -eq "Up" }',
+      '',
+      '$ergebnis = foreach ($a in $adapter) {',
+      '',
+      '    $konf = Get-NetIPConfiguration -InterfaceIndex $a.ifIndex -ErrorAction SilentlyContinue',
+      '    $dns  = (Get-DnsClientServerAddress -InterfaceIndex $a.ifIndex -AddressFamily IPv4).ServerAddresses',
+      '',
+      '    [PSCustomObject]@{',
+      '        Adapter    = $a.Name',
+      '        Status     = $a.Status',
+      '        MACAdresse = $a.MacAddress',
+      '        Tempo      = $a.LinkSpeed',
+      '        IPv4       = ($konf.IPv4Address.IPAddress -join ", ")',
+      '        Gateway    = ($konf.IPv4DefaultGateway.NextHop -join ", ")',
+      '        DNSServer  = ($dns -join ", ")',
+      '        Profil     = (Get-NetConnectionProfile -InterfaceIndex $a.ifIndex -ErrorAction SilentlyContinue).NetworkCategory',
+      '    }',
+      '}',
+      '',
+      '$ergebnis',
+      '',
+      'Write-Host "`nStatische Routen:" -ForegroundColor Cyan',
+      'Get-NetRoute -AddressFamily IPv4 | Where-Object { $_.NextHop -ne "0.0.0.0" } |',
+      '    Select-Object DestinationPrefix, NextHop, InterfaceAlias, RouteMetric |',
+      '    Sort-Object DestinationPrefix | Format-Table -AutoSize'
+    ],
+    schritte:[
+      ["ifIndex als Klammer","Alle Net-Cmdlets lassen sich über den Schnittstellenindex verbinden - so gehören Adresse, DNS und Profil sicher zum selben Adapter."],
+      ["join für mehrere Werte","Ein Adapter kann mehrere Adressen und DNS-Server haben. Ohne join stünde in der CSV nur der Typname."],
+      ["Netzwerkprofil","Privat, öffentlich oder Domäne entscheidet darüber, welches Firewallprofil greift - bei Verbindungsproblemen der erste Blick."],
+      ["Routen gesondert","Routen gehören nicht zu einem einzelnen Adapter und werden deshalb separat ausgegeben."]
+    ]
+  };}
+},
+
+{
+  id:"dienst-pruefen", bereich:"Dienste & Berichte", name:"Gestoppte Dienste prüfen",
+  zweck:"Findet Dienste mit automatischem Start, die nicht laufen, und startet sie auf Wunsch.",
+  datei:"Repair-Dienste.ps1", module:[], admin:true,
+  felder:[
+    {k:"Rechner",  l:"Rechner, durch Komma getrennt (leer = lokal)", t:"text", v:""},
+    {k:"Starten",  l:"Gefundene Dienste starten", t:"switch", v:"false"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$ziele = if ($Rechner) { $Rechner -split "," | ForEach-Object { $_.Trim() } } else { $env:COMPUTERNAME }',
+      '',
+      '$pruefung = {',
+      '    Get-Service | Where-Object {',
+      '        $_.StartType -eq "Automatic" -and $_.Status -ne "Running"',
+      '    } | Select-Object @{n="Rechner"; e={$env:COMPUTERNAME}}, Name, DisplayName, Status, StartType',
+      '}',
+      '',
+      '$gefunden = if ($ziele -contains $env:COMPUTERNAME -and $ziele.Count -eq 1) {',
+      '    & $pruefung',
+      '} else {',
+      '    Invoke-Command -ComputerName $ziele -ScriptBlock $pruefung -ErrorAction Stop',
+      '}',
+      '',
+      'if (-not $gefunden) {',
+      '    Write-Host "Alle automatischen Dienste laufen." -ForegroundColor Green',
+      '    return',
+      '}',
+      '',
+      '$gefunden | Sort-Object Rechner, Name',
+      '',
+      'if ($Starten) {',
+      '    foreach ($d in $gefunden) {',
+      '        if ($PSCmdlet.ShouldProcess("$($d.Rechner)\\$($d.Name)", "Dienst starten")) {',
+      '            Invoke-Command -ComputerName $d.Rechner -ScriptBlock {',
+      '                Start-Service -Name $using:d.Name -ErrorAction Stop',
+      '            }',
+      '        }',
+      '    }',
+      '}'
+    ],
+    schritte:[
+      ["Skriptblock in einer Variablen","Derselbe Code läuft lokal und entfernt - einmal geschrieben, zweimal verwendet."],
+      ["Rechnername mitgeben","Bei mehreren Zielen wäre sonst nicht erkennbar, von welchem Server ein Eintrag stammt."],
+      ["Lokal ohne Remoting","Für den eigenen Rechner braucht es kein WinRM. Der Aufrufoperator & führt den Block direkt aus."],
+      ["$using: für lokale Variablen","Innerhalb von Invoke-Command sind lokale Variablen unbekannt. $using: reicht ihren Wert an die Gegenstelle durch."],
+      ["Verzögerter Start beachten","Dienste mit Starttyp Automatisch (verzögerter Start) können kurz nach dem Hochfahren noch zu Recht stehen."]
+    ]
+  };}
+},
+{
+  id:"inventar", bereich:"Dienste & Berichte", name:"Systeminventar erstellen",
+  zweck:"Sammelt Hardware, Betriebssystem, Speicherplatz und Domänendaten für die Dokumentation.",
+  datei:"Get-Inventar.ps1", module:[], admin:false,
+  felder:[
+    {k:"Rechner", l:"Rechner, durch Komma getrennt (leer = lokal)", t:"text", v:""}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$ziele = if ($Rechner) { $Rechner -split "," | ForEach-Object { $_.Trim() } } else { $env:COMPUTERNAME }',
+      '',
+      'foreach ($ziel in $ziele) {',
+      '',
+      '    if (-not (Test-Connection $ziel -Count 1 -Quiet)) {',
+      '        Write-Warning "Nicht erreichbar: $ziel"',
+      '        continue',
+      '    }',
+      '',
+      '    $os   = Get-CimInstance Win32_OperatingSystem -ComputerName $ziel',
+      '    $cs   = Get-CimInstance Win32_ComputerSystem  -ComputerName $ziel',
+      '    $bios = Get-CimInstance Win32_BIOS            -ComputerName $ziel',
+      '    $disk = Get-CimInstance Win32_LogicalDisk     -ComputerName $ziel -Filter "DriveType=3"',
+      '',
+      '    [PSCustomObject]@{',
+      '        Rechner       = $ziel',
+      '        Hersteller    = $cs.Manufacturer',
+      '        Modell        = $cs.Model',
+      '        Seriennummer  = $bios.SerialNumber',
+      '        Betriebssystem= $os.Caption',
+      '        Version       = $os.Version',
+      '        Domaene       = $cs.Domain',
+      '        Prozessoren   = $cs.NumberOfLogicalProcessors',
+      '        RAMGB         = [math]::Round($cs.TotalPhysicalMemory/1GB,1)',
+      '        LetzterStart  = $os.LastBootUpTime',
+      '        Laufwerke     = ($disk | ForEach-Object {',
+      '                            "$($_.DeviceID) $([math]::Round($_.FreeSpace/1GB,1))/$([math]::Round($_.Size/1GB,1)) GB frei"',
+      '                        }) -join " | "',
+      '    }',
+      '}'
+    ],
+    schritte:[
+      ["Erreichbarkeit zuerst","Ein CIM-Aufruf gegen einen ausgeschalteten Rechner läuft lange in einen Zeitüberlauf. Der Ping vorab spart bei Listen viel Zeit."],
+      ["Get-CimInstance statt Get-WmiObject","Der moderne Weg: nutzt WinRM statt DCOM und ist in PowerShell 7 überhaupt der einzige verfügbare."],
+      ["Vier Klassen kombinieren","Win32_OperatingSystem, Win32_ComputerSystem, Win32_BIOS und Win32_LogicalDisk decken zusammen fast jede Inventarfrage ab."],
+      ["DriveType=3","Der Filter beschränkt auf lokale Festplatten - ohne ihn erscheinen auch Netzlaufwerke und Wechselmedien."],
+      ["Ein Objekt je Rechner","So bleibt das Ergebnis eine saubere Tabelle, die sich direkt exportieren lässt."]
+    ]
+  };}
+},
+{
+  id:"ereignis", bereich:"Dienste & Berichte", name:"Fehlerereignisse auswerten",
+  zweck:"Sammelt Fehler und kritische Ereignisse der letzten Tage und gruppiert sie nach Häufigkeit.",
+  datei:"Get-Fehlerbericht.ps1", module:[], admin:true,
+  felder:[
+    {k:"Protokoll", l:"Protokoll", t:"select", v:"System", opt:["System","Application","Security"]},
+    {k:"Tage",      l:"Zeitraum in Tagen", t:"int", v:"3"},
+    {k:"Anzahl",    l:"Höchstzahl Ereignisse", t:"int", v:"500"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$filter = @{',
+      '    LogName   = $Protokoll',
+      '    Level     = 1, 2      # 1 = kritisch, 2 = Fehler',
+      '    StartTime = (Get-Date).AddDays(-$Tage)',
+      '}',
+      '',
+      '$ereignisse = Get-WinEvent -FilterHashtable $filter -MaxEvents $Anzahl -ErrorAction SilentlyContinue',
+      '',
+      'if (-not $ereignisse) {',
+      '    Write-Host "Keine Fehler im Protokoll $Protokoll der letzten $Tage Tage." -ForegroundColor Green',
+      '    return',
+      '}',
+      '',
+      '$ereignisse |',
+      '    Group-Object Id, ProviderName |',
+      '    Sort-Object Count -Descending |',
+      '    ForEach-Object {',
+      '        $erstes = $_.Group | Select-Object -First 1',
+      '        [PSCustomObject]@{',
+      '            Anzahl   = $_.Count',
+      '            EreignisID = $erstes.Id',
+      '            Quelle   = $erstes.ProviderName',
+      '            Zuletzt  = ($_.Group | Sort-Object TimeCreated -Descending | Select-Object -First 1).TimeCreated',
+      '            Meldung  = ($erstes.Message -split "`n")[0]',
+      '        }',
+      '    }'
+    ],
+    schritte:[
+      ["FilterHashtable statt Where-Object","Der Filter wird an den Protokolldienst übergeben. Bei großen Protokollen ist das um ein Vielfaches schneller als nachträgliches Filtern."],
+      ["Level 1 und 2","1 steht für kritisch, 2 für Fehler. 3 wäre Warnung, 4 Information."],
+      ["Gruppieren nach ID und Quelle","Hundert gleiche Meldungen sind ein Problem, nicht hundert. Die Gruppierung macht das sofort sichtbar."],
+      ["Nur die erste Zeile der Meldung","Ereignistexte sind oft mehrere Absätze lang. Für die Übersicht reicht die erste Zeile."],
+      ["Security braucht Adminrechte","Auf das Sicherheitsprotokoll darf nur ein Administrator zugreifen - deshalb ist #Requires -RunAsAdministrator gesetzt."]
+    ]
+  };}
+}
+);
+
+/* =====================================================================
    ANWENDUNG
    ===================================================================== */
 
@@ -2741,6 +3461,7 @@ var ALL_CMDS = []
 var EXTRA_VIEWS = [
   {id:"befehle",  grp:"Nachschlagen", nav:"Befehlssuche", title:"Befehlssuche"},
   {id:"katalog",  grp:"Nachschlagen", nav:"Cmdlet-Katalog", title:"Cmdlet-Katalog"},
+  {id:"generator",grp:"Nachschlagen", nav:"Skript-Generator", title:"Skript-Generator"},
   {id:"quiz",     grp:"Nachschlagen", nav:"Wissenstest",  title:"Wissenstest"},
   {id:"quellen",  grp:"Nachschlagen", nav:"Quellen",      title:"Quellen"},
   {id:"impressum",grp:"Rechtliches",  nav:"Impressum",    title:"Impressum"}
@@ -2753,6 +3474,9 @@ var state = {
   suche: "",
   katModul: "alle",
   katSuche: "",
+  genRezept: "ad-benutzer",
+  genWerte: {},
+  genOpt: { requires:true, hilfe:true, binding:true, strict:true, fehler:true, protokoll:false, csv:false, verbose:true },
   quizIdx: 0, quizRichtig: 0, quizBeantwortet: 0
 };
 
@@ -2872,6 +3596,7 @@ function zeige(id){
   if (kap) { kapitelZeichnen(main, kap); }
   else if (id === "befehle")   { befehleZeichnen(main); }
   else if (id === "katalog")   { katalogZeichnen(main); }
+  else if (id === "generator") { generatorZeichnen(main); }
   else if (id === "quiz")      { quizZeichnen(main); }
   else if (id === "quellen")   { quellenZeichnen(main); }
   else if (id === "impressum") { impressumZeichnen(main); }
@@ -3060,6 +3785,339 @@ function katalogTreffer(){
     html += '<div class="cmdlet"><span class="cn">' + esc(c[1]) + '</span><span class="cd">' + esc(c[2]) + "</span></div>";
   });
   liste.innerHTML = html;
+}
+
+/* ---- Skript-Generator ---- */
+function rezeptFinden(id){
+  for (var i = 0; i < REZEPTE.length; i++) { if (REZEPTE[i].id === id) { return REZEPTE[i]; } }
+  return REZEPTE[0];
+}
+
+function genWert(r, f){
+  var w = state.genWerte[r.id] || {};
+  return (w[f.k] !== undefined) ? w[f.k] : f.v;
+}
+
+function psText(v){ return "'" + String(v).replace(/'/g, "''") + "'"; }
+
+function baueSkript(){
+  var r  = rezeptFinden(state.genRezept);
+  var o  = state.genOpt;
+  var z  = [];          // Zeilen
+  var bl = [];          // Erklärungsblöcke
+  var i;
+
+  if (o.requires) {
+    z.push("#Requires -Version 5.1");
+    if (r.module.length) { z.push("#Requires -Modules " + r.module.join(", ")); }
+    if (r.admin)         { z.push("#Requires -RunAsAdministrator"); }
+    z.push("");
+    bl.push(["#Requires", "Wird geprüft, bevor die erste Zeile läuft. Fehlt das Modul oder die Erhöhung, bricht PowerShell sofort ab statt mitten in der Arbeit."]);
+  }
+
+  if (o.hilfe) {
+    z.push("<#");
+    z.push(".SYNOPSIS");
+    z.push("    " + r.name + ".");
+    z.push("");
+    z.push(".DESCRIPTION");
+    z.push("    " + r.zweck);
+    z.push("");
+    for (i = 0; i < r.felder.length; i++) {
+      z.push(".PARAMETER " + r.felder[i].k);
+      z.push("    " + r.felder[i].l + ".");
+      z.push("");
+    }
+    if (o.csv) {
+      z.push(".PARAMETER BerichtPfad");
+      z.push("    Zieldatei für den CSV-Bericht.");
+      z.push("");
+    }
+    z.push(".EXAMPLE");
+    z.push("    .\\" + r.datei + (o.binding ? " -WhatIf" : "") + (o.verbose ? " -Verbose" : ""));
+    z.push("");
+    z.push("    " + (o.binding ? "Zeigt, was geschehen würde, ohne etwas zu ändern." : "Führt das Skript mit den Standardwerten aus."));
+    z.push("");
+    z.push(".NOTES");
+    z.push("    Erstellt mit dem Skript-Generator, Stand " + new Date().toISOString().slice(0, 10) + ".");
+    z.push("    Vor dem Einsatz auf einem Produktivsystem in einer Testumgebung prüfen.");
+    z.push("#>");
+    z.push("");
+    bl.push(["Kommentarhilfe", "Dieser Block macht Get-Help auf dem eigenen Skript nutzbar - mit .EXAMPLES, Parameterbeschreibungen und allem, was ein eingebautes Cmdlet auch bietet. Er muss unmittelbar vor param stehen."]);
+  }
+
+  if (o.binding) {
+    z.push("[CmdletBinding(SupportsShouldProcess)]");
+    bl.push(["CmdletBinding", "Schaltet -Verbose, -ErrorAction und über SupportsShouldProcess auch -WhatIf und -Confirm frei. Ohne diese Zeile müsste man die Testlogik von Hand nachbauen."]);
+  }
+
+  // param-Block
+  z.push("param(");
+  var teile = [];
+  for (i = 0; i < r.felder.length; i++) {
+    var f = r.felder[i];
+    var wert = genWert(r, f);
+    var zeile = "    # " + f.l + "\n";
+    if (f.t === "int") {
+      zeile += "    [int]$" + f.k + " = " + (parseInt(wert, 10) || 0);
+    } else if (f.t === "switch") {
+      zeile += "    [bool]$" + f.k + " = $" + (String(wert) === "true" ? "true" : "false");
+    } else if (f.t === "select") {
+      zeile += "    [ValidateSet(" + f.opt.map(psText).join(", ") + ")]\n";
+      zeile += "    [string]$" + f.k + " = " + psText(wert);
+    } else {
+      zeile += "    [string]$" + f.k + " = " + psText(wert);
+    }
+    teile.push(zeile);
+  }
+  if (o.csv) {
+    teile.push("    # Zieldatei für den CSV-Bericht\n    [string]$BerichtPfad = " +
+               psText("C:\\Berichte\\" + r.datei.replace(/\.ps1$/, "") + ".csv"));
+  }
+  z.push(teile.join(",\n"));
+  z.push(")");
+  z.push("");
+  bl.push(["param-Block", "Alle Eingaben stehen an einer Stelle und sind typisiert. Die Werte aus dem Formular sind hier nur Standardwerte - beim Aufruf lassen sie sich überschreiben, ohne das Skript zu ändern."]);
+
+  if (o.strict) {
+    z.push("Set-StrictMode -Version Latest");
+    z.push("");
+    bl.push(["Set-StrictMode", "Ein Tippfehler in einem Variablennamen wird zum Fehler statt zu einem stillen leeren Wert. Das ist die häufigste Ursache für Skripte, die scheinbar durchlaufen und nichts tun."]);
+  }
+
+  if (o.fehler) {
+    z.push("$ErrorActionPreference = 'Stop'");
+    z.push("");
+    bl.push(["ErrorActionPreference", "Setzt alle Fehler auf abbrechend. Erst dadurch erreicht der catch-Block die Fehler der aufgerufenen Cmdlets - ohne das läuft ein Skript nach einem Fehler einfach weiter."]);
+  }
+
+  if (r.module.length) {
+    z.push("Import-Module " + r.module.join(", "));
+    z.push("");
+  }
+
+  if (o.protokoll) {
+    z.push("$protokollDatei = \"C:\\Protokoll\\" + r.datei.replace(/\.ps1$/, "") + "-$(Get-Date -Format yyyyMMdd-HHmm).txt\"");
+    z.push("if (-not (Test-Path (Split-Path $protokollDatei))) {");
+    z.push("    New-Item (Split-Path $protokollDatei) -ItemType Directory | Out-Null");
+    z.push("}");
+    z.push("Start-Transcript -Path $protokollDatei | Out-Null");
+    z.push("");
+    bl.push(["Start-Transcript", "Schneidet Eingaben und Ausgaben vollständig mit. Bei Änderungen an Produktivsystemen ist das der Nachweis, was tatsächlich gemacht wurde."]);
+  }
+
+  // Rumpf
+  var rumpf = r.rumpf();
+  var kern = rumpf.code.slice();
+
+  if (o.csv) {
+    kern = ["$ausgabe = & {"]
+      .concat(kern.map(function(l){ return l ? "    " + l : ""; }))
+      .concat([
+        "}",
+        "",
+        "if (-not (Test-Path (Split-Path $BerichtPfad))) {",
+        "    New-Item (Split-Path $BerichtPfad) -ItemType Directory | Out-Null",
+        "}",
+        "",
+        "$ausgabe | Export-Csv -Path $BerichtPfad -NoTypeInformation -Delimiter ';' -Encoding UTF8",
+        "Write-Verbose \"Bericht geschrieben: $BerichtPfad\"",
+        "$ausgabe"
+      ]);
+    bl.push(["CSV-Bericht", "Die Ausgabe wird in einer Variablen gesammelt, exportiert und danach trotzdem zurückgegeben. Das Semikolon als Trennzeichen und UTF8 sorgen dafür, dass deutsches Excel die Datei samt Umlauten richtig öffnet."]);
+  }
+
+  if (o.fehler) {
+    z.push("try {");
+    z = z.concat(kern.map(function(l){ return l ? "    " + l : ""; }));
+    z.push("}");
+    z.push("catch {");
+    z.push("    Write-Error \"Abbruch: $($_.Exception.Message)\"");
+    z.push("    Write-Verbose \"Zeile $($_.InvocationInfo.ScriptLineNumber): $($_.InvocationInfo.Line.Trim())\"");
+    z.push("    exit 1");
+    z.push("}");
+    z.push("finally {");
+    if (o.protokoll) { z.push("    Stop-Transcript | Out-Null"); }
+    z.push("    Write-Verbose 'Durchlauf beendet.'");
+    z.push("}");
+    z.push("");
+    z.push("exit 0");
+    bl.push(["try / catch / finally", "catch fängt den Abbruch ab und gibt eine verwertbare Meldung samt Zeilennummer aus. finally läuft immer - auch nach einem Fehler - und ist der richtige Ort zum Aufräumen. Der Rückgabewert über exit macht das Ergebnis für eine Aufgabenplanung auswertbar."]);
+  } else {
+    z = z.concat(kern);
+    if (o.protokoll) { z.push(""); z.push("Stop-Transcript | Out-Null"); }
+  }
+
+  for (i = 0; i < rumpf.schritte.length; i++) { bl.push(rumpf.schritte[i]); }
+
+  return { code: z.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n", bloecke: bl, rezept: r };
+}
+
+function generatorZeichnen(main){
+  var bereiche = [];
+  REZEPTE.forEach(function(r){ if (bereiche.indexOf(r.bereich) === -1) { bereiche.push(r.bereich); } });
+
+  var wrap = document.createElement("div");
+  wrap.className = "view on";
+  wrap.innerHTML =
+    '<div class="eyebrow">Nachschlagen</div>' +
+    "<h2>Skript-Generator</h2>" +
+    '<div class="lede">Aufgabe wählen, Felder ausfüllen, Gerüst zusammenstellen - heraus kommt ein Skript nach den Vorgaben aus dem Kapitel <em>Skriptaufbau</em>. Jeder Block wird darunter erklärt.</div>' +
+
+    '<div class="genstep"><span class="gnum">1</span>Aufgabe</div>' +
+    '<div class="selwrap"><select id="genrez">' +
+      bereiche.map(function(b){
+        return '<optgroup label="' + b + '">' +
+          REZEPTE.filter(function(r){ return r.bereich === b; })
+                 .map(function(r){ return '<option value="' + r.id + '">' + r.name + "</option>"; }).join("") +
+          "</optgroup>";
+      }).join("") +
+    "</select></div>" +
+    '<div class="genzweck" id="genzweck"></div>' +
+
+    '<div class="genstep"><span class="gnum">2</span>Werte</div>' +
+    '<div id="genfelder"></div>' +
+
+    '<div class="genstep"><span class="gnum">3</span>Gerüst</div>' +
+    '<div class="genopts" id="genopts"></div>' +
+
+    '<div class="genstep"><span class="gnum">4</span>Ergebnis</div>' +
+    '<div id="genausgabe"></div>' +
+    '<div class="genbtns">' +
+      '<button class="btn" id="genDownload">Als .ps1 speichern</button>' +
+      '<button class="btn ghost" id="genReset">Werte zurücksetzen</button>' +
+    "</div>" +
+    '<div class="genstep"><span class="gnum">5</span>Was das Skript tut</div>' +
+    '<div id="generklaerung"></div>' +
+    '<div class="note warn"><b>Vor dem ersten Einsatz</b>Erzeugte Skripte gehören in eine Testumgebung, nicht direkt auf ein Produktivsystem. Bei allem, was ändert oder löscht, zuerst mit <code>-WhatIf</code> starten.</div>';
+
+  main.appendChild(wrap);
+
+  var sel = wrap.querySelector("#genrez");
+  sel.value = state.genRezept;
+  sel.addEventListener("change", function(){
+    state.genRezept = sel.value;
+    generatorFelder();
+    generatorAusgabe();
+  });
+
+  var optlist = [
+    ["requires",  "#Requires-Zeilen"],
+    ["hilfe",     "Kommentarhilfe"],
+    ["binding",   "CmdletBinding + WhatIf"],
+    ["strict",    "Set-StrictMode"],
+    ["fehler",    "try / catch / finally"],
+    ["verbose",   "Verbose-Meldungen"],
+    ["protokoll", "Transcript-Protokoll"],
+    ["csv",       "CSV-Bericht schreiben"]
+  ];
+  var ob = wrap.querySelector("#genopts");
+  ob.innerHTML = optlist.map(function(o){
+    return '<label class="genopt"><input type="checkbox" data-o="' + o[0] + '"' +
+           (state.genOpt[o[0]] ? " checked" : "") + "> " + o[1] + "</label>";
+  }).join("");
+  Array.prototype.forEach.call(ob.querySelectorAll("[data-o]"), function(c){
+    c.addEventListener("change", function(){
+      state.genOpt[c.getAttribute("data-o")] = c.checked;
+      generatorAusgabe();
+    });
+  });
+
+  wrap.querySelector("#genReset").addEventListener("click", function(){
+    state.genWerte[state.genRezept] = {};
+    generatorFelder();
+    generatorAusgabe();
+  });
+
+  wrap.querySelector("#genDownload").addEventListener("click", function(){
+    var erg = baueSkript();
+    try {
+      var blob = new Blob(["\ufeff" + erg.code], {type:"text/plain;charset=utf-8"});
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = erg.rezept.datei;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+    } catch(e) {
+      alert("Der Browser hat den Download blockiert. Der Text lässt sich stattdessen über den Kopieren-Knopf übernehmen.");
+    }
+  });
+
+  generatorFelder();
+  generatorAusgabe();
+}
+
+function generatorFelder(){
+  var r  = rezeptFinden(state.genRezept);
+  var bx = document.getElementById("genfelder");
+  document.getElementById("genzweck").textContent = r.zweck;
+  if (!state.genWerte[r.id]) { state.genWerte[r.id] = {}; }
+
+  bx.innerHTML = r.felder.map(function(f){
+    var w = genWert(r, f);
+    var eingabe;
+    if (f.t === "switch") {
+      eingabe = '<label class="genschalter"><input type="checkbox" data-f="' + f.k + '"' +
+                (String(w) === "true" ? " checked" : "") + "> " + f.l + "</label>";
+      return '<div class="genfeld schalter">' + eingabe + "</div>";
+    }
+    if (f.t === "select") {
+      eingabe = '<select data-f="' + f.k + '">' + f.opt.map(function(o){
+        return '<option value="' + o + '"' + (o === w ? " selected" : "") + ">" + o + "</option>";
+      }).join("") + "</select>";
+    } else {
+      eingabe = '<input type="' + (f.t === "int" ? "number" : "text") + '" data-f="' + f.k +
+                '" value="' + String(w).replace(/"/g, "&quot;") + '" spellcheck="false">';
+    }
+    return '<div class="genfeld"><label>' + f.l + "</label>" + eingabe +
+           '<span class="gvar">$' + f.k + "</span></div>";
+  }).join("");
+
+  Array.prototype.forEach.call(bx.querySelectorAll("[data-f]"), function(el){
+    var ereignis = (el.type === "checkbox" || el.tagName === "SELECT") ? "change" : "input";
+    el.addEventListener(ereignis, function(){
+      state.genWerte[r.id][el.getAttribute("data-f")] =
+        (el.type === "checkbox") ? String(el.checked) : el.value;
+      generatorAusgabe();
+    });
+  });
+}
+
+function generatorAusgabe(){
+  var ziel = document.getElementById("genausgabe");
+  if (!ziel) { return; }
+  var erg = baueSkript();
+
+  ziel.innerHTML = "";
+  var box  = document.createElement("div");
+  box.className = "term";
+  var head = document.createElement("div");
+  head.className = "term-head";
+  var tag  = document.createElement("span");
+  tag.className = "tag t-ps";
+  tag.textContent = erg.rezept.datei;
+  var zahl = document.createElement("span");
+  zahl.style.marginLeft = ".5rem";
+  zahl.textContent = erg.code.split("\n").length + " Zeilen";
+  var btn = document.createElement("button");
+  btn.className = "copy";
+  btn.type = "button";
+  btn.textContent = "Kopieren";
+  btn.addEventListener("click", function(){ kopieren(erg.code, btn); });
+  head.appendChild(tag); head.appendChild(zahl); head.appendChild(btn);
+
+  var pre = document.createElement("pre");
+  pre.textContent = erg.code;
+  box.appendChild(head); box.appendChild(pre);
+  ziel.appendChild(box);
+
+  document.getElementById("generklaerung").innerHTML =
+    erg.bloecke.map(function(b, i){
+      return '<div class="genblock"><span class="bnum">' + (i + 1) + '</span>' +
+             '<div><b>' + esc(b[0]) + "</b>" + esc(b[1]) + "</div></div>";
+    }).join("");
 }
 
 /* ---- Wissenstest ---- */
