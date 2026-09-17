@@ -301,6 +301,23 @@ td code{white-space:normal}
   color:var(--ink);font-family:var(--mono);font-size:.82rem;line-height:1.6;padding:.5rem .55rem;resize:vertical}
 .genfeld textarea:focus{outline:2px solid var(--teal);outline-offset:1px}
 
+/* ---------- Prüfung ---------- */
+#genpruefung{margin:.2rem 0 .7rem}
+.pruefkopf{font-family:var(--mono);font-size:.8rem;padding:.45rem .7rem;border-radius:8px 8px 0 0;
+  border:1px solid var(--line);border-bottom:0}
+.pruefkopf.p-ok{background:#0d2a20;color:#b6f0d6;border-color:#1c5240}
+.pruefkopf.p-warnung{background:#231c0c;color:#f0d9a0;border-color:#4a3a14}
+.pruefkopf.p-fehler{background:#2a1416;color:#f3b8b8;border-color:#5a2226}
+.pruefzeile{display:flex;gap:.55rem;font-size:.84rem;color:var(--ink-dim);
+  padding:.45rem .7rem;border:1px solid var(--line);border-top:0;background:var(--panel)}
+.pruefzeile span{flex:0 0 52px;font-family:var(--mono);font-size:.7rem;padding-top:.15rem}
+.pruefzeile.p-fehler span{color:var(--rose)}
+.pruefzeile.p-warnung span{color:var(--amber)}
+.pruefzeile.p-tipp span{color:var(--teal)}
+.pruefnote{font-size:.78rem;color:var(--ink-faint);padding:.5rem .7rem;background:var(--bg-deep);
+  border:1px solid var(--line);border-top:0;border-radius:0 0 8px 8px;line-height:1.7}
+.pruefnote code{display:block;margin:.3rem 0;white-space:pre-wrap;word-break:break-all}
+
 /* ---------- Quiz ---------- */
 .q{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:1rem;margin-bottom:.9rem}
 .q .qtext{font-weight:500;margin-bottom:.75rem;color:#eafcf8}
@@ -5722,11 +5739,13 @@ function generatorZeichnen(main){
     '<div class="genopts" id="genopts"></div>' +
 
     '<div class="genstep"><span class="gnum">4</span>Ergebnis</div>' +
+    '<div id="genpruefung"></div>' +
     '<div id="genausgabe"></div>' +
     '<div class="genbtns">' +
       '<button class="btn" id="genDownload">Als .ps1 speichern</button>' +
       '<button class="btn ghost" id="genReset">Werte zurücksetzen</button>' +
     "</div>" +
+    '<div class="counter" id="genDlHinweis"></div>' +
     '<div class="genstep"><span class="gnum">5</span>Was das Skript tut</div>' +
     '<div id="generklaerung"></div>' +
     '<div class="note warn"><b>Vor dem ersten Einsatz</b>Erzeugte Skripte gehören in eine Testumgebung, nicht direkt auf ein Produktivsystem. Bei allem, was ändert oder löscht, zuerst mit <code>-WhatIf</code> starten.</div>';
@@ -5795,8 +5814,12 @@ function generatorZeichnen(main){
     generatorAusgabe();
   });
 
-  wrap.querySelector("#genDownload").addEventListener("click", function(){
-    var erg = baueSkript();
+  function downloadHinweis(text){
+    var el = document.getElementById("genDlHinweis");
+    if (el) { el.textContent = text; }
+  }
+
+  function downloadLokal(erg){
     try {
       var blob = new Blob(["\ufeff" + erg.code], {type:"text/plain;charset=utf-8"});
       var a = document.createElement("a");
@@ -5806,8 +5829,28 @@ function generatorZeichnen(main){
       a.click();
       document.body.removeChild(a);
       setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+      downloadHinweis("Gespeichert als " + erg.rezept.datei + ".");
     } catch(e) {
-      alert("Der Browser hat den Download blockiert. Der Text lässt sich stattdessen über den Kopieren-Knopf übernehmen.");
+      downloadHinweis("Der Browser hat das Speichern blockiert – den Text bitte über Kopieren übernehmen.");
+    }
+  }
+
+  wrap.querySelector("#genDownload").addEventListener("click", function(){
+    var erg = baueSkript();
+    downloadHinweis("");
+
+    if (window.claude && typeof window.claude.use === "function") {
+      window.claude.use("downloads").then(function(dl){
+        if (!dl) { downloadLokal(erg); return; }
+        dl.save({ filename: erg.rezept.datei + ".txt", data: "\ufeff" + erg.code }).then(function(){
+          downloadHinweis("Gespeichert als " + erg.rezept.datei + ".txt – zum Ausführen die Endung .txt entfernen.");
+        }, function(fehler){
+          if (fehler && fehler.code === "declined") { downloadHinweis("Speichern abgebrochen."); return; }
+          downloadLokal(erg);
+        });
+      }, function(){ downloadLokal(erg); });
+    } else {
+      downloadLokal(erg);
     }
   });
 
@@ -5867,6 +5910,179 @@ function vorlageLoeschen(){
   delete v[sel.value];
   vorlagenSchreiben(v);
   vorlagenListe();
+}
+
+function klammernPruefen(code){
+  var zeilen = code.split("\n");
+  var stand = { "(": 0, "{": 0, "[": 0 };
+  var paare = { ")": "(", "}": "{", "]": "[" };
+  var inHere = false, i, j;
+
+  for (i = 0; i < zeilen.length; i++) {
+    var z = zeilen[i], roh = z.trim();
+
+    if (inHere) { if (roh === '"@' || roh === "'@") { inHere = false; } continue; }
+    if (/@["']\s*$/.test(z)) { inHere = true; continue; }
+    if (roh.charAt(0) === "#") { continue; }
+
+    var einfach = false, doppelt = false;
+    for (j = 0; j < z.length; j++) {
+      var c = z.charAt(j);
+      if (c === "`") { j++; continue; }
+      if (!doppelt && c === "'") { einfach = !einfach; continue; }
+      if (!einfach && c === '"') { doppelt = !doppelt; continue; }
+      if (einfach || doppelt) { continue; }
+      if (c === "#") { break; }
+      if (stand[c] !== undefined) { stand[c]++; }
+      else if (paare[c]) { stand[paare[c]]--; }
+    }
+  }
+  return stand;
+}
+
+function baukastenPruefen(){
+  var befunde = [];
+  var liste = state.bauListe.map(function(e){ return bausteinFinden(e.b); }).filter(Boolean);
+
+  function melde(stufe, text){ befunde.push({ s: stufe, t: text }); }
+
+  if (!liste.length) { return befunde; }
+
+  var typen   = liste.map(function(b){ return b.typ; });
+  var quellen = typen.filter(function(t){ return t === "quelle"; }).length;
+
+  /* 1. Aufbau */
+  if (!quellen) {
+    melde("fehler", "Es fehlt eine Quelle. Ohne sie ist $daten leer und alle folgenden Bausteine laufen ins Nichts.");
+  }
+  if (quellen > 1) {
+    melde("warnung", quellen + " Quellen gewählt. Jede überschreibt $daten vollständig - nur die letzte wirkt sich aus.");
+  }
+  var ersteQuelle = typen.indexOf("quelle");
+  if (ersteQuelle > 0) {
+    var davor = typen.slice(0, ersteQuelle).filter(function(t){ return t === "schritt" || t === "aktion" || t === "ausgabe"; }).length;
+    if (davor) { melde("fehler", "Die Quelle steht erst an Position " + (ersteQuelle + 1) + ". Bausteine davor arbeiten mit leeren Daten."); }
+  }
+  if (typen.indexOf("ausgabe") === -1 && typen.indexOf("aktion") === -1) {
+    melde("warnung", "Weder Ausgabe noch Aktion gewählt. Das Skript sammelt Daten, tut damit aber nichts.");
+  }
+  var letzteAusgabe = typen.lastIndexOf("ausgabe");
+  if (letzteAusgabe > -1 && letzteAusgabe < typen.length - 1) {
+    var danach = typen.slice(letzteAusgabe + 1).filter(function(t){ return t === "schritt" || t === "quelle"; }).length;
+    if (danach) { melde("warnung", "Nach der Ausgabe folgen noch Verarbeitungsschritte. Ausgegeben wird der Stand von vorher."); }
+  }
+
+  /* 2. Struktur */
+  var tiefe = 0, zuviel = 0;
+  liste.forEach(function(b){
+    if (b.aus) { if (tiefe === 0) { zuviel++; } else { tiefe--; } }
+    if (b.ein) { tiefe++; }
+  });
+  if (tiefe > 0) { melde("fehler", tiefe + " Block/Blöcke sind nicht geschlossen. Zu jedem Anfang gehört der passende Ende-Baustein."); }
+  if (zuviel > 0) { melde("fehler", zuviel + " Ende-Baustein/e ohne zugehörigen Anfang. PowerShell meldet dazu eine unerwartete schließende Klammer."); }
+
+  /* 3. Reihenfolge innerhalb der Pipeline */
+  var idxFormat = -1, idxExport = -1;
+  liste.forEach(function(b, i){
+    if (b.id === "o-tabelle" || b.id === "o-datei") { if (idxFormat === -1) { idxFormat = i; } }
+    if (b.id === "o-csv" || b.id === "o-html") { if (idxExport === -1) { idxExport = i; } }
+  });
+  if (idxFormat > -1 && idxExport > idxFormat) {
+    melde("fehler", "Eine Tabellenausgabe steht vor einem Export. Format-Cmdlets zerstören die Objektstruktur - der Export danach enthält unbrauchbare Zeilen.");
+  }
+
+  var idxMessen = -1;
+  liste.forEach(function(b, i){ if (b.id === "s-rechnen" && idxMessen === -1) { idxMessen = i; } });
+  if (idxMessen > -1) {
+    var nachMessen = liste.slice(idxMessen + 1).filter(function(b){
+      return ["s-filter", "s-sortieren", "s-spalten", "s-gruppieren", "s-erste"].indexOf(b.id) > -1;
+    }).length;
+    if (nachMessen) { melde("warnung", "Nach \"Summe und Durchschnitt\" enthält $daten nur noch ein Ergebnisobjekt. Die folgenden Schritte greifen ins Leere."); }
+  }
+
+  var idxErste = -1, idxSort = -1;
+  liste.forEach(function(b, i){
+    if (b.id === "s-erste" && idxErste === -1) { idxErste = i; }
+    if (b.id === "s-sortieren" && idxSort === -1) { idxSort = i; }
+  });
+  if (idxErste > -1 && idxSort > idxErste) {
+    melde("warnung", "Begrenzen steht vor dem Sortieren. Dann werden zufällige Objekte behalten und erst danach sortiert - meist ist es umgekehrt gemeint.");
+  }
+
+  /* 4. Abhängigkeiten zum Gerüst */
+  var brauchtShouldProcess = liste.some(function(b){ return b.id === "a-jedes"; });
+  if (brauchtShouldProcess && !state.genOpt.binding) {
+    melde("fehler", "Der Baustein \"Für jedes Objekt etwas tun\" ruft $PSCmdlet.ShouldProcess auf. Dafür muss unter Gerüst \"CmdletBinding + WhatIf\" angehakt sein.");
+  }
+  var adDrin = liste.some(function(b){ return (b.module || []).indexOf("ActiveDirectory") > -1; });
+  if (adDrin && !state.genOpt.requires) {
+    melde("tipp", "Es werden AD-Cmdlets verwendet. Mit angehaktem \"#Requires\" bricht das Skript sofort ab, wenn RSAT auf dem Rechner fehlt.");
+  }
+  var adminDrin = liste.some(function(b){ return b.admin; });
+  if (adminDrin && !state.genOpt.requires) {
+    melde("tipp", "Mindestens ein Baustein braucht Administratorrechte. Mit \"#Requires\" wird das vor dem ersten Befehl geprüft.");
+  }
+
+  /* 5. $objekt nur innerhalb einer Schleife */
+  var offen = 0;
+  liste.forEach(function(b, i){
+    if (b.aus && offen > 0) { offen--; }
+    if (!b.ein && offen === 0 && b.id !== "a-jedes") {
+      var werte = state.genWerte.baukasten || {};
+      var nutztObjekt = (b.felder || []).some(function(f){
+        var w = werte[f.k] !== undefined ? werte[f.k] : f.v;
+        return (f.t === "code" || f.t === "mehrzeilig") && String(w).indexOf("$objekt") > -1;
+      });
+      if (nutztObjekt) {
+        melde("warnung", "Baustein " + (i + 1) + " verwendet $objekt, steht aber außerhalb einer Schleife. Dort ist die Variable leer.");
+      }
+    }
+    if (b.ein) { offen++; }
+  });
+
+  /* 6. Klammernbilanz im fertigen Code */
+  var stand = klammernPruefen(baueSkript().code);
+  ["(", "{", "["].forEach(function(k){
+    var zu = { "(": ")", "{": "}", "[": "]" }[k];
+    if (stand[k] > 0) { melde("fehler", stand[k] + "-mal " + k + " ohne passendes " + zu + " im erzeugten Code."); }
+    if (stand[k] < 0) { melde("fehler", (-stand[k]) + "-mal " + zu + " ohne passendes " + k + " im erzeugten Code."); }
+  });
+
+  return befunde;
+}
+
+function pruefungZeichnen(){
+  var ziel = document.getElementById("genpruefung");
+  if (!ziel) { return; }
+
+  if (state.genModus !== "bau") { ziel.innerHTML = ""; return; }
+
+  var b = baukastenPruefen();
+  if (!state.bauListe.length) { ziel.innerHTML = ""; return; }
+
+  var fehler   = b.filter(function(x){ return x.s === "fehler"; }).length;
+  var warnung  = b.filter(function(x){ return x.s === "warnung"; }).length;
+
+  var tipps = b.filter(function(x){ return x.s === "tipp"; }).length;
+  var kopf  = fehler ? "fehler" : (warnung ? "warnung" : "ok");
+
+  var teile = [];
+  if (fehler)  { teile.push(fehler + (fehler === 1 ? " Fehler" : " Fehler")); }
+  if (warnung) { teile.push(warnung + (warnung === 1 ? " Hinweis" : " Hinweise")); }
+  if (tipps)   { teile.push(tipps + (tipps === 1 ? " Tipp" : " Tipps")); }
+
+  var text = teile.length ? teile.join(", ") : "Aufbau schlüssig – keine Auffälligkeiten";
+
+  ziel.innerHTML =
+    '<div class="pruefkopf p-' + kopf + '">' + text + "</div>" +
+    (b.length ? b.map(function(x){
+      return '<div class="pruefzeile p-' + x.s + '"><span>' +
+             (x.s === "fehler" ? "Fehler" : x.s === "warnung" ? "Hinweis" : "Tipp") +
+             "</span>" + esc(x.t) + "</div>";
+    }).join("") : "") +
+    '<div class="pruefnote">Das ist eine Plausibilitätsprüfung im Browser, kein PowerShell-Durchlauf. Der echte Test läuft auf dem Zielsystem:' +
+    '<code>$f=[ref]$null; [System.Management.Automation.Language.Parser]::ParseFile(&quot;.\\skript.ps1&quot;,[ref]$null,$f); $f.Value</code>' +
+    ' prüft die Syntax, <code>Invoke-ScriptAnalyzer -Path .\\skript.ps1</code> den Stil.</div>';
 }
 
 function baukastenZeichnen(){
@@ -6011,6 +6227,8 @@ function generatorAusgabe(){
   pre.textContent = erg.code;
   box.appendChild(head); box.appendChild(pre);
   ziel.appendChild(box);
+
+  pruefungZeichnen();
 
   document.getElementById("generklaerung").innerHTML =
     erg.bloecke.map(function(b, i){
