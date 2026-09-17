@@ -252,6 +252,55 @@ td code{white-space:normal}
   .genfeld .gvar{display:none}
 }
 
+/* ---------- Baukasten ---------- */
+.gentabs{display:flex;gap:.4rem;margin:.9rem 0 0}
+.gentab{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink-dim);
+  font:inherit;font-size:.86rem;padding:.5rem .6rem;border-radius:9px;cursor:pointer}
+.gentab.on{background:#0f3038;border-color:var(--teal);color:#a9f0e4;font-weight:500}
+.bauhilfe{font-size:.83rem;color:var(--ink-dim);background:#0b2129;border-left:3px solid var(--teal);
+  padding:.6rem .75rem;border-radius:0 8px 8px 0;margin:.2rem 0 .8rem}
+.bauleer{font-size:.85rem;color:var(--ink-faint);border:1px dashed var(--line);
+  border-radius:9px;padding:.8rem;text-align:center}
+.baurow{display:flex;align-items:center;gap:.5rem;background:var(--panel);border:1px solid var(--line);
+  border-left-width:3px;border-radius:8px;padding:.45rem .55rem;margin-bottom:.4rem}
+.baurow.t-quelle {border-left-color:#6ea8fe}
+.baurow.t-schritt{border-left-color:var(--teal)}
+.baurow.t-aktion {border-left-color:var(--amber)}
+.baurow.t-ausgabe{border-left-color:var(--emerald)}
+.bnr{width:20px;height:20px;border-radius:50%;background:#12242e;color:var(--ink-faint);
+  font-family:var(--mono);font-size:.68rem;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.btxt{flex:1;min-width:0}
+.btxt b{display:block;font-size:.86rem;color:#eafcf8;font-weight:500}
+.btxt span{display:block;font-size:.76rem;color:var(--ink-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bbtn{background:none;border:1px solid var(--line);color:var(--ink-dim);border-radius:6px;
+  width:28px;height:28px;font-size:.8rem;cursor:pointer;flex:0 0 auto}
+.bbtn:hover:not(:disabled){border-color:var(--teal);color:var(--teal)}
+.bbtn:disabled{opacity:.3;cursor:default}
+.bbtn.weg:hover{border-color:var(--rose);color:var(--rose)}
+.baugruppe{margin-top:1rem}
+.bautitel{font-family:var(--mono);font-size:.72rem;color:var(--ink-faint);margin-bottom:.4rem}
+.baucard{display:block;width:100%;text-align:left;background:var(--bg-deep);border:1px solid var(--line);
+  border-left-width:3px;border-radius:8px;padding:.45rem .6rem;margin-bottom:.35rem;cursor:pointer;font:inherit}
+.baucard.t-quelle {border-left-color:#6ea8fe}
+.baucard.t-schritt{border-left-color:var(--teal)}
+.baucard.t-aktion {border-left-color:var(--amber)}
+.baucard.t-ausgabe{border-left-color:var(--emerald)}
+.baucard:hover{background:var(--panel-2)}
+.baucard b{display:block;font-size:.85rem;color:#eafcf8;font-weight:500}
+.baucard span{display:block;font-size:.76rem;color:var(--ink-faint)}
+
+.baurow.t-struktur{border-left-color:#c084fc}
+.baucard.t-struktur{border-left-color:#c084fc}
+.bauspeicher{display:flex;gap:.4rem;flex-wrap:wrap;margin:.6rem 0 .9rem;align-items:center}
+.bauspeicher select{flex:1;min-width:140px;background:var(--panel);border:1px solid var(--line);
+  border-radius:8px;color:var(--ink);font-family:var(--mono);font-size:.8rem;padding:.42rem .5rem}
+.bauspeicher .btn{font-size:.8rem;padding:.42rem .7rem}
+.genfeld.lang{display:block}
+.genfeld.lang label{display:block;margin-bottom:.25rem;flex:none}
+.genfeld textarea{width:100%;background:var(--bg-deep);border:1px solid var(--line);border-radius:7px;
+  color:var(--ink);font-family:var(--mono);font-size:.82rem;line-height:1.6;padding:.5rem .55rem;resize:vertical}
+.genfeld textarea:focus{outline:2px solid var(--teal);outline-offset:1px}
+
 /* ---------- Quiz ---------- */
 .q{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:1rem;margin-bottom:.9rem}
 .q .qtext{font-weight:500;margin-bottom:.75rem;color:#eafcf8}
@@ -3449,6 +3498,1587 @@ REZEPTE.push(
 }
 );
 
+REZEPTE.push(
+{
+  id:"sys-software", bereich:"System & Wartung", name:"Installierte Software auflisten",
+  zweck:"Liest die installierten Programme aus der Registrierung - der richtige Weg, ohne Win32_Product zu verwenden.",
+  datei:"Get-InstallierteSoftware.ps1", module:[], admin:false,
+  felder:[
+    {k:"Suchbegriff", l:"Filter nach Name (leer = alles)", t:"text", v:""},
+    {k:"Rechner",     l:"Rechner, durch Komma getrennt (leer = lokal)", t:"text", v:""}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$pfade = @(',
+      '    "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*"',
+      '    "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*"',
+      '    "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*"',
+      ')',
+      '',
+      '$sammeln = {',
+      '    param($pfade, $suche)',
+      '    Get-ItemProperty -Path $pfade -ErrorAction SilentlyContinue |',
+      '        Where-Object { $_.DisplayName -and -not $_.SystemComponent } |',
+      '        Where-Object { -not $suche -or $_.DisplayName -like "*$suche*" } |',
+      '        ForEach-Object {',
+      '            [PSCustomObject]@{',
+      '                Rechner     = $env:COMPUTERNAME',
+      '                Name        = $_.DisplayName',
+      '                Version     = $_.DisplayVersion',
+      '                Hersteller  = $_.Publisher',
+      '                Installiert = $_.InstallDate',
+      '                Deinstall   = $_.UninstallString',
+      '            }',
+      '        }',
+      '}',
+      '',
+      '$ziele = if ($Rechner) { $Rechner -split "," | ForEach-Object { $_.Trim() } } else { $null }',
+      '',
+      '$ergebnis = if ($ziele) {',
+      '    Invoke-Command -ComputerName $ziele -ScriptBlock $sammeln -ArgumentList $pfade, $Suchbegriff',
+      '} else {',
+      '    & $sammeln $pfade $Suchbegriff',
+      '}',
+      '',
+      '$ergebnis | Sort-Object Rechner, Name -Unique'
+    ],
+    schritte:[
+      ["Drei Registrierungspfade","64-Bit-Programme, 32-Bit-Programme unter WOW6432Node und benutzerbezogene Installationen liegen an verschiedenen Stellen. Wer nur einen Pfad liest, übersieht die Hälfte."],
+      ["Niemals Win32_Product","Diese WMI-Klasse löst bei jeder Abfrage eine Konsistenzprüfung aller MSI-Pakete aus. Das dauert Minuten und kann Neuinstallationen anstoßen - der Registrierungsweg ist der einzig vertretbare."],
+      ["SystemComponent ausblenden","Laufzeitbibliotheken und Updates tragen dieses Kennzeichen und gehören nicht in eine Softwareliste."],
+      ["Skriptblock mit param","So funktioniert derselbe Code lokal und über Invoke-Command - die Werte kommen per -ArgumentList hinein."],
+      ["-Unique beim Sortieren","Ein Programm kann in mehreren Zweigen auftauchen. Das entfernt die Dopplungen."]
+    ]
+  };}
+},
+{
+  id:"sys-platz", bereich:"System & Wartung", name:"Speicherplatz überwachen",
+  zweck:"Prüft alle Laufwerke gegen einen Schwellwert und meldet, was knapp wird.",
+  datei:"Test-Speicherplatz.ps1", module:[], admin:false,
+  felder:[
+    {k:"Rechner",    l:"Rechner, durch Komma getrennt (leer = lokal)", t:"text", v:""},
+    {k:"SchwelleGB", l:"Warnung ab weniger als (GB)", t:"int", v:"20"},
+    {k:"SchwelleProzent", l:"Warnung ab weniger als (Prozent)", t:"int", v:"10"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$ziele = if ($Rechner) { $Rechner -split "," | ForEach-Object { $_.Trim() } } else { $env:COMPUTERNAME }',
+      '',
+      '$ergebnis = foreach ($ziel in $ziele) {',
+      '',
+      '    if (-not (Test-Connection $ziel -Count 1 -Quiet)) {',
+      '        Write-Warning "Nicht erreichbar: $ziel"',
+      '        continue',
+      '    }',
+      '',
+      '    Get-CimInstance Win32_LogicalDisk -ComputerName $ziel -Filter "DriveType=3" | ForEach-Object {',
+      '',
+      '        $freiGB      = [math]::Round($_.FreeSpace/1GB, 1)',
+      '        $gesamtGB    = [math]::Round($_.Size/1GB, 1)',
+      '        $freiProzent = if ($_.Size) { [math]::Round($_.FreeSpace/$_.Size*100, 1) } else { 0 }',
+      '',
+      '        [PSCustomObject]@{',
+      '            Rechner     = $ziel',
+      '            Laufwerk    = $_.DeviceID',
+      '            Bezeichnung = $_.VolumeName',
+      '            FreiGB      = $freiGB',
+      '            GesamtGB    = $gesamtGB',
+      '            FreiProzent = $freiProzent',
+      '            Status      = if ($freiGB -lt $SchwelleGB -or $freiProzent -lt $SchwelleProzent) { "KNAPP" } else { "OK" }',
+      '        }',
+      '    }',
+      '}',
+      '',
+      '$ergebnis | Sort-Object FreiProzent',
+      '',
+      '$knapp = $ergebnis | Where-Object Status -eq "KNAPP"',
+      'if ($knapp) {',
+      '    Write-Warning "Knapper Speicher auf: $(($knapp | ForEach-Object { "$($_.Rechner) $($_.Laufwerk)" }) -join ", ")"',
+      '    exit 2',
+      '}'
+    ],
+    schritte:[
+      ["Zwei Schwellwerte","Prozent allein reicht nicht: 10 Prozent von 4 TB sind reichlich, 10 Prozent von 100 GB sind es nicht. Deshalb löst jede der beiden Grenzen aus."],
+      ["DriveType=3","Beschränkt auf lokale Festplatten. Ohne den Filter erscheinen Netzlaufwerke, CD-Laufwerke und USB-Sticks."],
+      ["Division absichern","Ein Laufwerk mit Größe 0 würde sonst eine Division durch null auslösen - bei ungewöhnlichen Datenträgern kommt das vor."],
+      ["Rückgabewert 2","Eine Aufgabenplanung oder ein Überwachungssystem kann den Wert auswerten und daraus eine Meldung erzeugen."]
+    ]
+  };}
+},
+{
+  id:"sys-neustart", bereich:"System & Wartung", name:"Ausstehenden Neustart prüfen",
+  zweck:"Findet heraus, ob ein Rechner auf einen Neustart wartet - und woran es liegt.",
+  datei:"Test-NeustartNoetig.ps1", module:[], admin:false,
+  felder:[
+    {k:"Rechner", l:"Rechner, durch Komma getrennt (leer = lokal)", t:"text", v:""}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$pruefung = {',
+      '',
+      '    $gruende = @()',
+      '',
+      '    if (Test-Path "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\RebootPending") {',
+      '        $gruende += "Komponentenwartung"',
+      '    }',
+      '    if (Test-Path "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate\\Auto Update\\RebootRequired") {',
+      '        $gruende += "Windows Update"',
+      '    }',
+      '    $sm = Get-ItemProperty "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager" -ErrorAction SilentlyContinue',
+      '    if ($sm.PendingFileRenameOperations) {',
+      '        $gruende += "Dateien werden beim Start ersetzt"',
+      '    }',
+      '    $cn = Get-ItemProperty "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters" -ErrorAction SilentlyContinue',
+      '    if ($cn.NV_Hostname -and $cn.Hostname -and $cn.NV_Hostname -ne $cn.Hostname) {',
+      '        $gruende += "Computer wurde umbenannt"',
+      '    }',
+      '',
+      '    $os = Get-CimInstance Win32_OperatingSystem',
+      '',
+      '    [PSCustomObject]@{',
+      '        Rechner        = $env:COMPUTERNAME',
+      '        NeustartNoetig = [bool]$gruende.Count',
+      '        Gruende        = if ($gruende) { $gruende -join ", " } else { "-" }',
+      '        LetzterStart   = $os.LastBootUpTime',
+      '        LaufzeitTage   = [math]::Round(((Get-Date) - $os.LastBootUpTime).TotalDays, 1)',
+      '    }',
+      '}',
+      '',
+      '$ziele = if ($Rechner) { $Rechner -split "," | ForEach-Object { $_.Trim() } } else { $null }',
+      '',
+      'if ($ziele) {',
+      '    Invoke-Command -ComputerName $ziele -ScriptBlock $pruefung | Sort-Object NeustartNoetig -Descending',
+      '} else {',
+      '    & $pruefung',
+      '}'
+    ],
+    schritte:[
+      ["Vier Kennzeichen","Windows meldet einen ausstehenden Neustart an mehreren Stellen. Nur die Kombination liefert ein verlässliches Ergebnis."],
+      ["PendingFileRenameOperations","Hier stehen Dateien, die beim nächsten Start ersetzt werden - typisch nach Updates und Treiberinstallationen."],
+      ["Umbenennung erkennen","Weichen Hostname und NV_Hostname ab, wurde der Rechner umbenannt und der Name wird erst nach dem Neustart wirksam."],
+      ["Laufzeit mitgeben","Ein Rechner mit 180 Tagen Laufzeit ist auch ohne ausstehenden Neustart einen Blick wert."]
+    ]
+  };}
+},
+{
+  id:"sys-autostart", bereich:"System & Wartung", name:"Autostart-Einträge auflisten",
+  zweck:"Sammelt alles, was beim Anmelden automatisch startet - der erste Blick bei einem langsamen Rechner.",
+  datei:"Get-Autostart.ps1", module:[], admin:false,
+  felder:[],
+  rumpf:function(){ return {
+    code:[
+      '$eintraege = [System.Collections.Generic.List[object]]::new()',
+      '',
+      '# 1. Registrierung: Run-Schlüssel für Computer und Benutzer',
+      '$runPfade = @(',
+      '    "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"',
+      '    "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run"',
+      '    "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"',
+      ')',
+      '',
+      'foreach ($pfad in $runPfade) {',
+      '    if (-not (Test-Path $pfad)) { continue }',
+      '    $werte = Get-Item $pfad',
+      '    foreach ($name in $werte.GetValueNames()) {',
+      '        $eintraege.Add([PSCustomObject]@{',
+      '            Quelle  = "Registrierung"',
+      '            Bereich = if ($pfad -like "HKLM*") { "Alle Benutzer" } else { "Nur $env:USERNAME" }',
+      '            Name    = $name',
+      '            Befehl  = $werte.GetValue($name)',
+      '        })',
+      '    }',
+      '}',
+      '',
+      '# 2. Autostart-Ordner',
+      '$ordner = @(',
+      '    [Environment]::GetFolderPath("Startup")',
+      '    [Environment]::GetFolderPath("CommonStartup")',
+      ')',
+      '',
+      'foreach ($o in $ordner) {',
+      '    Get-ChildItem $o -File -ErrorAction SilentlyContinue | ForEach-Object {',
+      '        $eintraege.Add([PSCustomObject]@{',
+      '            Quelle  = "Autostart-Ordner"',
+      '            Bereich = $o',
+      '            Name    = $_.Name',
+      '            Befehl  = $_.FullName',
+      '        })',
+      '    }',
+      '}',
+      '',
+      '# 3. Geplante Aufgaben, die bei der Anmeldung starten',
+      'Get-ScheduledTask -ErrorAction SilentlyContinue |',
+      '    Where-Object { $_.Triggers.CimClass.CimClassName -contains "MSFT_TaskLogonTrigger" -and $_.State -ne "Disabled" } |',
+      '    ForEach-Object {',
+      '        $eintraege.Add([PSCustomObject]@{',
+      '            Quelle  = "Geplante Aufgabe"',
+      '            Bereich = $_.TaskPath',
+      '            Name    = $_.TaskName',
+      '            Befehl  = ($_.Actions.Execute -join " ")',
+      '        })',
+      '    }',
+      '',
+      '$eintraege | Sort-Object Quelle, Name'
+    ],
+    schritte:[
+      ["Drei verschiedene Quellen","Autostart ist nicht ein Ort, sondern mindestens drei: Registrierung, Autostart-Ordner und geplante Aufgaben mit Anmeldeauslöser."],
+      ["HKLM gegen HKCU","Einträge unter HKLM gelten für alle Benutzer, unter HKCU nur für den angemeldeten. Das entscheidet darüber, wo man ansetzen muss."],
+      ["GetValueNames","Die Run-Schlüssel enthalten beliebig viele Werte. Über die Methode lassen sie sich aufzählen, ohne die Namen zu kennen."],
+      ["Environment statt fester Pfad","Der Autostart-Ordner liegt je nach Windows-Sprache und Version woanders. GetFolderPath liefert immer den richtigen."],
+      ["Anmeldeauslöser filtern","Nur Aufgaben mit einem Logon-Trigger gehören in die Liste - nicht die hunderte zeitgesteuerten Wartungsaufgaben."]
+    ]
+  };}
+},
+{
+  id:"sys-temp", bereich:"System & Wartung", name:"Temporäre Dateien aufräumen",
+  zweck:"Leert die Temp-Ordner und zeigt, wie viel Platz dabei frei wird.",
+  datei:"Clear-TempDateien.ps1", module:[], admin:true,
+  felder:[
+    {k:"AelterAlsTage", l:"Nur Dateien älter als (Tage)", t:"int", v:"7"},
+    {k:"MitWindowsTemp", l:"Auch C:\\Windows\\Temp einbeziehen", t:"switch", v:"true"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$ordner = @($env:TEMP)',
+      'if ($MitWindowsTemp) { $ordner += "$env:SystemRoot\\Temp" }',
+      '',
+      '$stichtag = (Get-Date).AddDays(-$AelterAlsTage)',
+      '$bericht  = [System.Collections.Generic.List[object]]::new()',
+      '',
+      'foreach ($o in $ordner) {',
+      '',
+      '    if (-not (Test-Path $o)) { continue }',
+      '',
+      '    $dateien = Get-ChildItem $o -Recurse -File -Force -ErrorAction SilentlyContinue |',
+      '        Where-Object { $_.LastWriteTime -lt $stichtag }',
+      '',
+      '    $groesse = ($dateien | Measure-Object Length -Sum).Sum',
+      '    $weg     = 0',
+      '    $bleibt  = 0',
+      '',
+      '    foreach ($d in $dateien) {',
+      '        if ($PSCmdlet.ShouldProcess($d.FullName, "Löschen")) {',
+      '            try   { Remove-Item $d.FullName -Force -ErrorAction Stop; $weg++ }',
+      '            catch { $bleibt++ }',
+      '        }',
+      '    }',
+      '',
+      '    $bericht.Add([PSCustomObject]@{',
+      '        Ordner     = $o',
+      '        Gefunden   = $dateien.Count',
+      '        Geloescht  = $weg',
+      '        Gesperrt   = $bleibt',
+      '        FreiMB     = [math]::Round($groesse/1MB, 1)',
+      '    })',
+      '}',
+      '',
+      '$bericht'
+    ],
+    schritte:[
+      ["Zwei Temp-Orte","$env:TEMP gehört dem angemeldeten Benutzer, C:\\Windows\\Temp dem System. Für den zweiten braucht es Administratorrechte."],
+      ["Altersgrenze statt alles","Dateien, die gerade in Benutzung sind, haben ein aktuelles Änderungsdatum. Die Grenze von einigen Tagen verhindert, dass laufenden Programmen etwas weggezogen wird."],
+      ["Gesperrte Dateien zählen","In Temp-Ordnern ist immer etwas in Benutzung. Statt den Lauf abzubrechen, wird mitgezählt und weitergemacht."],
+      ["-Force beim Auflisten","Ohne diesen Schalter übersieht Get-ChildItem versteckte Dateien - in Temp-Ordnern sind das nicht wenige."]
+    ]
+  };}
+},
+{
+  id:"sys-zertifikate", bereich:"System & Wartung", name:"Ablaufende Zertifikate finden",
+  zweck:"Listet Zertifikate des Rechners, die demnächst ablaufen - bevor ein Dienst ausfällt.",
+  datei:"Get-AblaufendeZertifikate.ps1", module:[], admin:false,
+  felder:[
+    {k:"Tage",   l:"Ablauf innerhalb der nächsten (Tage)", t:"int", v:"60"},
+    {k:"Speicher", l:"Zertifikatspeicher", t:"select", v:"LocalMachine\\My", opt:["LocalMachine\\My","LocalMachine\\WebHosting","CurrentUser\\My","LocalMachine\\Root"]}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$grenze = (Get-Date).AddDays($Tage)',
+      '',
+      '$zertifikate = Get-ChildItem "Cert:\\$Speicher" -ErrorAction Stop |',
+      '    Where-Object { $_.NotAfter -lt $grenze } |',
+      '    ForEach-Object {',
+      '        [PSCustomObject]@{',
+      '            Antragsteller = $_.Subject',
+      '            Aussteller    = $_.Issuer',
+      '            GueltigBis    = $_.NotAfter',
+      '            RestTage      = [int](($_.NotAfter - (Get-Date)).TotalDays)',
+      '            Fingerabdruck = $_.Thumbprint',
+      '            Status        = if ($_.NotAfter -lt (Get-Date)) { "ABGELAUFEN" } else { "läuft ab" }',
+      '        }',
+      '    }',
+      '',
+      'if (-not $zertifikate) {',
+      '    Write-Host "Kein Zertifikat läuft in den nächsten $Tage Tagen ab." -ForegroundColor Green',
+      '    return',
+      '}',
+      '',
+      '$zertifikate | Sort-Object RestTage'
+    ],
+    schritte:[
+      ["Cert: ist ein Laufwerk","Der Zertifikatspeicher wird über einen Provider angesprochen. Deshalb funktioniert hier dasselbe Get-ChildItem wie im Dateisystem."],
+      ["LocalMachine gegen CurrentUser","Dienste und Webserver nutzen den Computerspeicher, Anwendungen oft den Benutzerspeicher. Wer am falschen Ort sucht, findet nichts."],
+      ["Reststand in Tagen","Eine Zahl lässt sich auswerten und überwachen, ein Datum muss man erst lesen."],
+      ["Bereits abgelaufene mitnehmen","Die Bedingung NotAfter kleiner als Grenze schließt abgelaufene Zertifikate mit ein - genau die sucht man im Störungsfall."]
+    ]
+  };}
+}
+);
+
+REZEPTE.push(
+{
+  id:"ap-lokalkonto", bereich:"Arbeitsplatz & Benutzer", name:"Lokales Konto einrichten",
+  zweck:"Legt ein lokales Konto an und nimmt es in eine Gruppe auf - etwa ein Notfall-Adminkonto.",
+  datei:"New-LokalesKonto.ps1", module:[], admin:true,
+  felder:[
+    {k:"Benutzer",    l:"Kontoname",              t:"text", v:"notfall.admin"},
+    {k:"Beschreibung",l:"Beschreibung",           t:"text", v:"Notfallzugang IT"},
+    {k:"Gruppe",      l:"Lokale Gruppe",          t:"text", v:"Administratoren"},
+    {k:"LaeuftNieAb", l:"Kennwort läuft nie ab",  t:"switch", v:"false"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      'if (Get-LocalUser -Name $Benutzer -ErrorAction SilentlyContinue) {',
+      '    Write-Warning "Konto $Benutzer existiert bereits - Abbruch."',
+      '    return',
+      '}',
+      '',
+      '$kennwort = Read-Host "Kennwort für $Benutzer" -AsSecureString',
+      '',
+      'if ($PSCmdlet.ShouldProcess($Benutzer, "Lokales Konto anlegen")) {',
+      '',
+      '    $neu = @{',
+      '        Name        = $Benutzer',
+      '        Password    = $kennwort',
+      '        FullName    = $Benutzer',
+      '        Description = $Beschreibung',
+      '    }',
+      '    if ($LaeuftNieAb) { $neu.PasswordNeverExpires = $true }',
+      '',
+      '    New-LocalUser @neu -ErrorAction Stop',
+      '    Add-LocalGroupMember -Group $Gruppe -Member $Benutzer -ErrorAction Stop',
+      '}',
+      '',
+      'Get-LocalUser -Name $Benutzer |',
+      '    Select-Object Name, Enabled, Description, PasswordNeverExpires,',
+      '                  @{n="Gruppen"; e={',
+      '                      (Get-LocalGroup | Where-Object {',
+      '                          (Get-LocalGroupMember $_ -ErrorAction SilentlyContinue).Name -contains "$env:COMPUTERNAME\\$Benutzer"',
+      '                      }).Name -join ", "',
+      '                  }}'
+    ],
+    schritte:[
+      ["Vorab prüfen","New-LocalUser bricht bei einem vorhandenen Konto mit einem Fehler ab. Die Prüfung liefert stattdessen eine verständliche Meldung."],
+      ["Hashtabelle bedingt erweitern","PasswordNeverExpires wird nur gesetzt, wenn es gewünscht ist. Das ist der praktische Nutzen von Splatting gegenüber einer festen Parameterliste."],
+      ["Gruppenname statt SID","Add-LocalGroupMember erwartet den lokalen Gruppennamen. Auf deutschen Systemen heißt die Gruppe Administratoren, auf englischen Administrators - bei gemischten Umgebungen lohnt der Weg über die bekannte SID S-1-5-32-544."],
+      ["Kontrolle mit Gruppenzuordnung","Die berechnete Eigenschaft durchsucht alle lokalen Gruppen nach dem neuen Konto - so ist sofort belegt, dass die Aufnahme geklappt hat."]
+    ]
+  };}
+},
+{
+  id:"ap-profile", bereich:"Arbeitsplatz & Benutzer", name:"Alte Benutzerprofile aufräumen",
+  zweck:"Findet verwaiste Profile auf einem Rechner und entfernt sie sauber über WMI.",
+  datei:"Remove-AlteProfile.ps1", module:[], admin:true,
+  felder:[
+    {k:"Tage",    l:"Unbenutzt seit (Tage)",  t:"int",  v:"90"},
+    {k:"Rechner", l:"Rechner (leer = lokal)", t:"text", v:""}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$ziel     = if ($Rechner) { $Rechner } else { $env:COMPUTERNAME }',
+      '$stichtag = (Get-Date).AddDays(-$Tage)',
+      '',
+      '$profile = Get-CimInstance Win32_UserProfile -ComputerName $ziel |',
+      '    Where-Object { -not $_.Special -and -not $_.Loaded -and $_.LastUseTime -lt $stichtag }',
+      '',
+      'if (-not $profile) {',
+      '    Write-Host "Kein Profil älter als $Tage Tage auf $ziel." -ForegroundColor Green',
+      '    return',
+      '}',
+      '',
+      '$uebersicht = $profile | ForEach-Object {',
+      '    $groesse = (Get-ChildItem $_.LocalPath -Recurse -File -Force -ErrorAction SilentlyContinue |',
+      '                Measure-Object Length -Sum).Sum',
+      '    [PSCustomObject]@{',
+      '        Rechner     = $ziel',
+      '        Pfad        = $_.LocalPath',
+      '        SID         = $_.SID',
+      '        ZuletztAktiv= $_.LastUseTime',
+      '        GroesseMB   = [math]::Round($groesse/1MB, 1)',
+      '        Objekt      = $_',
+      '    }',
+      '}',
+      '',
+      '$uebersicht | Select-Object Rechner, Pfad, ZuletztAktiv, GroesseMB | Sort-Object GroesseMB -Descending',
+      '',
+      'foreach ($p in $uebersicht) {',
+      '    if ($PSCmdlet.ShouldProcess("$($p.Pfad) auf $ziel", "Profil entfernen")) {',
+      '        Remove-CimInstance -InputObject $p.Objekt -ErrorAction Stop',
+      '        Write-Verbose "Entfernt: $($p.Pfad)"',
+      '    }',
+      '}'
+    ],
+    schritte:[
+      ["Niemals den Ordner löschen","Ein Profil besteht aus Ordner, Registrierungszweig und einem Eintrag in der Profilliste. Wer nur C:\\Users\\name löscht, hinterlässt eine kaputte Anmeldung. Remove-CimInstance räumt alles ab."],
+      ["Special ausschließen","Systemprofile wie der Standardbenutzer oder das Netzwerkdienstkonto tragen dieses Kennzeichen und dürfen nie entfernt werden."],
+      ["Loaded prüfen","Ein gerade angemeldeter Benutzer hat ein geladenes Profil. Das lässt sich nicht entfernen und würde nur Fehler erzeugen."],
+      ["Größe vorab ermitteln","Macht sichtbar, wie viel Platz der Lauf tatsächlich bringt - und hilft zu entscheiden, ob er sich lohnt."],
+      ["Das CIM-Objekt mitführen","Remove-CimInstance braucht das Originalobjekt. Deshalb wandert es als Eigenschaft mit, wird aber nicht mit ausgegeben."]
+    ]
+  };}
+},
+{
+  id:"ap-laufwerke", bereich:"Arbeitsplatz & Benutzer", name:"Netzlaufwerke verbinden",
+  zweck:"Verbindet mehrere Freigaben dauerhaft und prüft vorher, ob der Server überhaupt antwortet.",
+  datei:"Connect-Netzlaufwerke.ps1", module:[], admin:false,
+  felder:[
+    {k:"Zuordnung", l:"Buchstabe=Pfad, durch Komma getrennt", t:"text", v:"H=\\\\srv01\\home,G=\\\\srv01\\gemeinsam,P=\\\\srv02\\projekte"},
+    {k:"Ersetzen",  l:"Bestehende Verbindung ersetzen", t:"switch", v:"true"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$paare = $Zuordnung -split "," | ForEach-Object {',
+      '    $t = $_.Trim() -split "=", 2',
+      '    if ($t.Count -eq 2) { [PSCustomObject]@{ Buchstabe = $t[0].Trim(); Pfad = $t[1].Trim() } }',
+      '}',
+      '',
+      'foreach ($p in $paare) {',
+      '',
+      '    $server = ($p.Pfad -split "\\\\")[2]',
+      '',
+      '    if (-not (Test-Connection $server -Count 1 -Quiet)) {',
+      '        Write-Warning "Server $server nicht erreichbar - $($p.Buchstabe): übersprungen"',
+      '        continue',
+      '    }',
+      '',
+      '    $vorhanden = Get-PSDrive -Name $p.Buchstabe -ErrorAction SilentlyContinue',
+      '    if ($vorhanden) {',
+      '        if (-not $Ersetzen) {',
+      '            Write-Verbose "$($p.Buchstabe): bereits vergeben - übersprungen"',
+      '            continue',
+      '        }',
+      '        Remove-PSDrive -Name $p.Buchstabe -Force -ErrorAction SilentlyContinue',
+      '    }',
+      '',
+      '    if ($PSCmdlet.ShouldProcess("$($p.Buchstabe): auf $($p.Pfad)", "Verbinden")) {',
+      '        New-PSDrive -Name $p.Buchstabe -PSProvider FileSystem -Root $p.Pfad -Persist -Scope Global -ErrorAction Stop | Out-Null',
+      '    }',
+      '}',
+      '',
+      'Get-PSDrive -PSProvider FileSystem |',
+      '    Where-Object { $_.DisplayRoot -like "\\\\*" } |',
+      '    Select-Object Name, DisplayRoot,',
+      '                  @{n="FreiGB"; e={ if ($_.Free) { [math]::Round($_.Free/1GB,1) } else { "-" } }}'
+    ],
+    schritte:[
+      ["Paare zerlegen","Die Schreibweise Buchstabe=Pfad wird an genau einem Gleichheitszeichen getrennt - der zweite Parameter von -split begrenzt die Anzahl der Teile."],
+      ["Servernamen herausziehen","Ein UNC-Pfad zerlegt am doppelten Backslash ergibt an Position 2 den Servernamen. Der Test vorab verhindert lange Zeitüberläufe."],
+      ["-Persist mit -Scope Global","-Persist macht die Verbindung im Explorer sichtbar und übersteht den Neustart. Ohne -Scope Global verschwindet sie beim Ende des Skripts wieder."],
+      ["Bestehende Verbindung lösen","Ein vergebener Buchstabe lässt sich nicht überschreiben. Remove-PSDrive gibt ihn zuerst frei."],
+      ["Abschlusskontrolle","Die Auflistung zeigt alle Netzlaufwerke samt freiem Platz - so ist das Ergebnis sofort belegt."]
+    ]
+  };}
+},
+{
+  id:"ap-drucker", bereich:"Arbeitsplatz & Benutzer", name:"Drucker und Warteschlange prüfen",
+  zweck:"Zeigt Drucker mit Status und hängenden Aufträgen und räumt die Warteschlange auf Wunsch.",
+  datei:"Repair-Druckwarteschlange.ps1", module:[], admin:true,
+  felder:[
+    {k:"Drucker",    l:"Drucker (leer = alle)",            t:"text", v:""},
+    {k:"Aufraeumen", l:"Hängende Aufträge löschen",         t:"switch", v:"false"},
+    {k:"SpoolerNeu", l:"Druckwarteschlangendienst neu starten", t:"switch", v:"false"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$drucker = if ($Drucker) { Get-Printer -Name $Drucker } else { Get-Printer }',
+      '',
+      '$uebersicht = foreach ($d in $drucker) {',
+      '',
+      '    $auftraege = Get-PrintJob -PrinterName $d.Name -ErrorAction SilentlyContinue',
+      '',
+      '    [PSCustomObject]@{',
+      '        Drucker   = $d.Name',
+      '        Status    = $d.PrinterStatus',
+      '        Anschluss = $d.PortName',
+      '        Treiber   = $d.DriverName',
+      '        Freigabe  = $d.Shared',
+      '        Auftraege = @($auftraege).Count',
+      '        Aeltester = ($auftraege | Sort-Object SubmittedTime | Select-Object -First 1).SubmittedTime',
+      '    }',
+      '}',
+      '',
+      '$uebersicht | Sort-Object Auftraege -Descending',
+      '',
+      'if ($Aufraeumen) {',
+      '    foreach ($d in $drucker) {',
+      '        Get-PrintJob -PrinterName $d.Name -ErrorAction SilentlyContinue | ForEach-Object {',
+      '            if ($PSCmdlet.ShouldProcess("$($d.Name): Auftrag $($_.Id)", "Löschen")) {',
+      '                Remove-PrintJob -InputObject $_ -ErrorAction SilentlyContinue',
+      '            }',
+      '        }',
+      '    }',
+      '}',
+      '',
+      'if ($SpoolerNeu) {',
+      '    if ($PSCmdlet.ShouldProcess("Spooler", "Dienst neu starten")) {',
+      '        Restart-Service -Name Spooler -Force -ErrorAction Stop',
+      '        Start-Sleep -Seconds 3',
+      '        Get-Service Spooler | Select-Object Name, Status',
+      '    }',
+      '}'
+    ],
+    schritte:[
+      ["@() um die Auftragsliste","Bei genau einem Auftrag liefert das Cmdlet ein einzelnes Objekt ohne Count-Eigenschaft. Die Klammern erzwingen ein Array - ein Klassiker unter den Stolpersteinen."],
+      ["Ältester Auftrag","Das Einreichungsdatum verrät, ob ein Auftrag seit Stunden hängt oder gerade erst abgeschickt wurde."],
+      ["Reihenfolge beim Aufräumen","Erst die Aufträge entfernen, dann den Dienst neu starten. Umgekehrt füllt sich die Warteschlange sofort wieder."],
+      ["Restart-Service -Force","Der Spooler hat abhängige Dienste. Ohne -Force verweigert er den Neustart."]
+    ]
+  };}
+},
+{
+  id:"sys-aufgabe", bereich:"System & Wartung", name:"Geplante Aufgabe anlegen",
+  zweck:"Richtet eine wiederkehrende Aufgabe ein, die ein Skript zu einer festen Uhrzeit ausführt.",
+  datei:"Register-Wartungsaufgabe.ps1", module:[], admin:true,
+  felder:[
+    {k:"AufgabenName", l:"Name der Aufgabe",     t:"text", v:"IT-Wartung-Nacht"},
+    {k:"SkriptPfad",   l:"Auszuführendes Skript", t:"text", v:"C:\\Skripte\\wartung.ps1"},
+    {k:"Uhrzeit",      l:"Startzeit (HH:mm)",     t:"text", v:"22:00"},
+    {k:"Rhythmus",     l:"Wiederholung",          t:"select", v:"Taeglich", opt:["Taeglich","Woechentlich","BeimStart"]},
+    {k:"AlsSystem",    l:"Als SYSTEM ausführen",  t:"switch", v:"true"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      'if (-not (Test-Path $SkriptPfad)) {',
+      '    throw "Skript nicht gefunden: $SkriptPfad"',
+      '}',
+      '',
+      '$argumente = \'-NoProfile -ExecutionPolicy Bypass -File "\' + $SkriptPfad + \'"\'',
+      '$aktion    = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $argumente',
+      '',
+      '$ausloeser = switch ($Rhythmus) {',
+      '    "Taeglich"      { New-ScheduledTaskTrigger -Daily -At $Uhrzeit }',
+      '    "Woechentlich"  { New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At $Uhrzeit }',
+      '    "BeimStart"     { New-ScheduledTaskTrigger -AtStartup }',
+      '}',
+      '',
+      '$konto = if ($AlsSystem) {',
+      '    New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest',
+      '} else {',
+      '    New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\\$env:USERNAME" -LogonType Interactive -RunLevel Highest',
+      '}',
+      '',
+      '$einstellungen = @{',
+      '    StartWhenAvailable        = $true',
+      '    DontStopIfGoingOnBatteries = $true',
+      '    AllowStartIfOnBatteries    = $true',
+      '    ExecutionTimeLimit         = (New-TimeSpan -Hours 2)',
+      '}',
+      '$optionen = New-ScheduledTaskSettingsSet @einstellungen',
+      '',
+      'if (Get-ScheduledTask -TaskName $AufgabenName -ErrorAction SilentlyContinue) {',
+      '    Write-Warning "Aufgabe existiert bereits und wird ersetzt."',
+      '    Unregister-ScheduledTask -TaskName $AufgabenName -Confirm:$false',
+      '}',
+      '',
+      'if ($PSCmdlet.ShouldProcess($AufgabenName, "Geplante Aufgabe registrieren")) {',
+      '    $aufgabe = @{',
+      '        TaskName    = $AufgabenName',
+      '        Action      = $aktion',
+      '        Trigger     = $ausloeser',
+      '        Principal   = $konto',
+      '        Settings    = $optionen',
+      '        Description = "Angelegt per Skript"',
+      '    }',
+      '    Register-ScheduledTask @aufgabe | Out-Null',
+      '}',
+      '',
+      'Get-ScheduledTask -TaskName $AufgabenName |',
+      '    Select-Object TaskName, State, @{n="NaechsterLauf"; e={(Get-ScheduledTaskInfo $_.TaskName).NextRunTime}}'
+    ],
+    schritte:[
+      ["Vier Bausteine","Eine Aufgabe besteht aus Aktion, Auslöser, Konto und Einstellungen. Jeder Teil wird einzeln erzeugt und erst am Ende zusammengesetzt."],
+      ["-ExecutionPolicy Bypass","Die Aufgabe läuft in einer eigenen Sitzung. Der Schalter umgeht die Richtlinie für genau diesen Aufruf, ohne sie systemweit zu ändern."],
+      ["Anführungszeichen im Argument","Der Pfad kann Leerzeichen enthalten, deshalb wird die Argumentzeichenkette aus Einzelteilen zusammengesetzt. Das ist lesbarer als das Entwerten mit Gravis-Zeichen mitten in einer Zeichenkette."],
+      ["SYSTEM oder Benutzer","Als SYSTEM läuft die Aufgabe ohne Anmeldung, hat aber keinen Zugriff auf Netzlaufwerke des Benutzers. Für Aufgaben mit Netzwerkzugriff ist ein Dienstkonto die bessere Wahl."],
+      ["StartWhenAvailable","Falls der Rechner zur geplanten Zeit ausgeschaltet war, holt die Aufgabe den Lauf nach."],
+      ["Vorhandene ersetzen","Register-ScheduledTask bricht bei einem vorhandenen Namen ab. Das Entfernen vorab macht das Skript wiederholbar."]
+    ]
+  };}
+}
+);
+
+REZEPTE.push(
+{
+  id:"datei-duplikate", bereich:"Dateien & Backup", name:"Doppelte Dateien finden",
+  zweck:"Findet inhaltsgleiche Dateien über Prüfsummen - unabhängig vom Dateinamen.",
+  datei:"Find-Duplikate.ps1", module:[], admin:false,
+  felder:[
+    {k:"Ordner", l:"Zu durchsuchender Ordner", t:"text", v:"D:\\Ablage"},
+    {k:"MinKB",  l:"Nur Dateien ab (KB)",      t:"int",  v:"100"},
+    {k:"Muster", l:"Dateimuster",              t:"text", v:"*"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$dateien = Get-ChildItem -Path $Ordner -Filter $Muster -File -Recurse -ErrorAction SilentlyContinue |',
+      '    Where-Object { $_.Length -gt ($MinKB * 1KB) }',
+      '',
+      'Write-Verbose "$($dateien.Count) Dateien in der Vorauswahl"',
+      '',
+      '# Erst nach Größe gruppieren - nur gleich große Dateien können gleich sein',
+      '$kandidaten = $dateien | Group-Object Length | Where-Object Count -gt 1',
+      '',
+      'Write-Verbose "$(($kandidaten | Measure-Object Count -Sum).Sum) Dateien müssen gehasht werden"',
+      '',
+      '$treffer = foreach ($gruppe in $kandidaten) {',
+      '',
+      '    $gruppe.Group |',
+      '        ForEach-Object { Get-FileHash $_.FullName -Algorithm SHA256 -ErrorAction SilentlyContinue } |',
+      '        Group-Object Hash |',
+      '        Where-Object Count -gt 1 |',
+      '        ForEach-Object {',
+      '            $pfade = $_.Group.Path',
+      '            [PSCustomObject]@{',
+      '                GroesseMB = [math]::Round(($gruppe.Group[0].Length)/1MB, 2)',
+      '                Anzahl    = $_.Count',
+      '                VerschwendetMB = [math]::Round(($gruppe.Group[0].Length * ($_.Count - 1))/1MB, 2)',
+      '                Original  = $pfade[0]',
+      '                Kopien    = ($pfade | Select-Object -Skip 1) -join " | "',
+      '            }',
+      '        }',
+      '}',
+      '',
+      'if (-not $treffer) {',
+      '    Write-Host "Keine Duplikate gefunden." -ForegroundColor Green',
+      '    return',
+      '}',
+      '',
+      '$treffer | Sort-Object VerschwendetMB -Descending',
+      'Write-Host "Insgesamt verschwendet: $([math]::Round((($treffer | Measure-Object VerschwendetMB -Sum).Sum),1)) MB" -ForegroundColor Cyan'
+    ],
+    schritte:[
+      ["Erst Größe, dann Hash","Prüfsummen zu berechnen heißt, jede Datei vollständig zu lesen. Die Vorgruppierung nach Größe reduziert die Menge oft um mehr als 90 Prozent - zwei verschieden große Dateien können nie gleich sein."],
+      ["SHA256 statt Dateiname","Zwei Dateien mit unterschiedlichem Namen können identisch sein, zwei gleichnamige völlig verschieden. Nur der Inhalt zählt."],
+      ["Erste Datei als Original","Die Reihenfolge ergibt sich aus dem Durchlauf, nicht aus einer inhaltlichen Wertung. Vor dem Löschen prüfen, welche Kopie wirklich bleiben soll."],
+      ["Verschwendeter Platz","Bei drei gleichen Dateien sind zwei überflüssig - deshalb Anzahl minus eins."],
+      ["Nichts wird gelöscht","Das Skript berichtet nur. Löschen ist bei Duplikaten immer eine Einzelfallentscheidung."]
+    ]
+  };}
+},
+{
+  id:"datei-archiv", bereich:"Dateien & Backup", name:"Archiv mit Datum erstellen",
+  zweck:"Packt einen Ordner in ein ZIP mit Zeitstempel und räumt alte Archive auf.",
+  datei:"New-DatiertesArchiv.ps1", module:[], admin:false,
+  felder:[
+    {k:"Quelle",     l:"Zu sicherndes Verzeichnis", t:"text", v:"C:\\Daten\\Projekte"},
+    {k:"Ablage",     l:"Ablageordner für Archive",  t:"text", v:"D:\\Archive"},
+    {k:"BehalteAnzahl", l:"Wie viele Archive behalten", t:"int", v:"7"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      'if (-not (Test-Path $Quelle)) { throw "Quelle nicht gefunden: $Quelle" }',
+      'if (-not (Test-Path $Ablage)) { New-Item $Ablage -ItemType Directory | Out-Null }',
+      '',
+      '$name    = Split-Path $Quelle -Leaf',
+      '$stempel = Get-Date -Format "yyyy-MM-dd_HHmm"',
+      '$ziel    = Join-Path $Ablage "$name`_$stempel.zip"',
+      '',
+      'Write-Verbose "Packe $Quelle nach $ziel"',
+      '',
+      'if ($PSCmdlet.ShouldProcess($ziel, "Archiv erstellen")) {',
+      '    Compress-Archive -Path (Join-Path $Quelle "*") -DestinationPath $ziel -CompressionLevel Optimal -ErrorAction Stop',
+      '}',
+      '',
+      '$archiv = Get-Item $ziel -ErrorAction SilentlyContinue',
+      '$quellGroesse = (Get-ChildItem $Quelle -Recurse -File | Measure-Object Length -Sum).Sum',
+      '',
+      '[PSCustomObject]@{',
+      '    Archiv      = $ziel',
+      '    QuelleMB    = [math]::Round($quellGroesse/1MB, 1)',
+      '    ArchivMB    = if ($archiv) { [math]::Round($archiv.Length/1MB, 1) } else { 0 }',
+      '    Ersparnis   = if ($archiv -and $quellGroesse) { "$([math]::Round((1 - $archiv.Length/$quellGroesse)*100))%" } else { "-" }',
+      '}',
+      '',
+      '# Alte Archive entfernen, die jüngsten behalten',
+      '$alte = Get-ChildItem $Ablage -Filter "$name`_*.zip" |',
+      '    Sort-Object LastWriteTime -Descending |',
+      '    Select-Object -Skip $BehalteAnzahl',
+      '',
+      'foreach ($a in $alte) {',
+      '    if ($PSCmdlet.ShouldProcess($a.FullName, "Altes Archiv löschen")) {',
+      '        Remove-Item $a.FullName -Force',
+      '        Write-Verbose "Entfernt: $($a.Name)"',
+      '    }',
+      '}'
+    ],
+    schritte:[
+      ["Zeitstempel im Namen","Das Format Jahr-Monat-Tag sortiert sich im Explorer von selbst richtig - anders als das deutsche Datumsformat."],
+      ["Gravis vor dem Unterstrich","In einer Zeichenkette leitet der Unterstrich nach einer Variablen sonst einen längeren Variablennamen ein. Das Gravis-Zeichen trennt sauber ab."],
+      ["Join-Path Quelle *","Ohne den Stern landet der Quellordner selbst als oberste Ebene im Archiv. Mit Stern liegt der Inhalt direkt in der ZIP-Wurzel."],
+      ["Ersparnis ausweisen","Der Vergleich zeigt, ob sich das Packen lohnt - bei bereits komprimierten Dateien wie Bildern oder Videos kaum."],
+      ["Aufbewahrung begrenzen","Sortiert nach Datum, die jüngsten überspringen, den Rest löschen. So wächst die Ablage nicht unbegrenzt."]
+    ]
+  };}
+},
+{
+  id:"datei-ersetzen", bereich:"Dateien & Backup", name:"Text in Dateien ersetzen",
+  zweck:"Sucht eine Zeichenkette in allen Dateien eines Ordners und ersetzt sie - mit Sicherung vorab.",
+  datei:"Update-TextInDateien.ps1", module:[], admin:false,
+  felder:[
+    {k:"Ordner",  l:"Ordner",              t:"text", v:"C:\\Konfiguration"},
+    {k:"Muster",  l:"Dateimuster",         t:"text", v:"*.config"},
+    {k:"Suchen",  l:"Zu ersetzender Text", t:"text", v:"srv-alt.firma.local"},
+    {k:"Ersetzen",l:"Neuer Text",          t:"text", v:"srv-neu.firma.local"},
+    {k:"Sicherung", l:"Sicherungskopie anlegen", t:"switch", v:"true"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$dateien = Get-ChildItem -Path $Ordner -Filter $Muster -File -Recurse -ErrorAction Stop',
+      '',
+      '$bericht = foreach ($d in $dateien) {',
+      '',
+      '    $inhalt = Get-Content $d.FullName -Raw -Encoding UTF8',
+      '',
+      '    if ($inhalt -notlike "*$Suchen*") { continue }',
+      '',
+      '    $anzahl = ([regex]::Matches($inhalt, [regex]::Escape($Suchen))).Count',
+      '    $neu    = $inhalt.Replace($Suchen, $Ersetzen)',
+      '',
+      '    if ($PSCmdlet.ShouldProcess($d.FullName, "$anzahl Vorkommen ersetzen")) {',
+      '',
+      '        if ($Sicherung) {',
+      '            Copy-Item $d.FullName "$($d.FullName).bak" -Force',
+      '        }',
+      '',
+      '        Set-Content -Path $d.FullName -Value $neu -Encoding UTF8 -NoNewline',
+      '    }',
+      '',
+      '    [PSCustomObject]@{',
+      '        Datei      = $d.FullName',
+      '        Vorkommen  = $anzahl',
+      '        Sicherung  = if ($Sicherung) { "$($d.Name).bak" } else { "keine" }',
+      '    }',
+      '}',
+      '',
+      'if (-not $bericht) {',
+      '    Write-Host "Der Text wurde in keiner Datei gefunden." -ForegroundColor Yellow',
+      '    return',
+      '}',
+      '',
+      '$bericht',
+      'Write-Host "$(($bericht | Measure-Object Vorkommen -Sum).Sum) Ersetzungen in $($bericht.Count) Dateien" -ForegroundColor Cyan'
+    ],
+    schritte:[
+      ["-Raw beim Lesen","Ohne diesen Schalter liefert Get-Content ein Array aus Einzelzeilen. Für eine Ersetzung über die ganze Datei braucht es den Inhalt als eine Zeichenkette."],
+      ["Replace statt -replace","Die .NET-Methode ersetzt Text wörtlich. Der Operator -replace würde die Eingabe als regulären Ausdruck deuten - ein Punkt oder eine Klammer im Suchtext hätte dann eine ganz andere Bedeutung."],
+      ["regex::Escape zum Zählen","Nur fürs Zählen wird ein regulärer Ausdruck gebraucht. Escape entschärft Sonderzeichen im Suchtext."],
+      ["Sicherung vor dem Schreiben","Eine .bak-Datei neben dem Original ist die einfachste Rückfallebene. Vor Massenersetzungen in Konfigurationsdateien Pflicht."],
+      ["-NoNewline","Set-Content hängt sonst einen Zeilenumbruch an. Bei Konfigurationsdateien kann das in seltenen Fällen stören."],
+      ["-WhatIf nutzen","Der Probelauf zeigt Datei für Datei, wie viele Vorkommen betroffen wären - ohne eine einzige zu ändern."]
+    ]
+  };}
+},
+{
+  id:"datei-rechte", bereich:"Dateien & Backup", name:"NTFS-Berechtigungen berichten",
+  zweck:"Dokumentiert, wer auf welchen Ordner zugreifen darf - die Grundlage jeder Rechteprüfung.",
+  datei:"Get-Berechtigungen.ps1", module:[], admin:false,
+  felder:[
+    {k:"Startordner", l:"Startordner",              t:"text", v:"D:\\Daten"},
+    {k:"Tiefe",       l:"Wie viele Ebenen tief",    t:"int",  v:"2"},
+    {k:"OhneVererbte",l:"Nur direkt gesetzte Rechte", t:"switch", v:"true"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$ordner = @(Get-Item $Startordner -ErrorAction Stop)',
+      '$ordner += Get-ChildItem $Startordner -Directory -Recurse -Depth ($Tiefe - 1) -ErrorAction SilentlyContinue',
+      '',
+      'Write-Verbose "$($ordner.Count) Ordner werden geprüft"',
+      '',
+      '$ergebnis = foreach ($o in $ordner) {',
+      '',
+      '    $acl = Get-Acl $o.FullName -ErrorAction SilentlyContinue',
+      '    if (-not $acl) { continue }',
+      '',
+      '    $regeln = $acl.Access',
+      '    if ($OhneVererbte) { $regeln = $regeln | Where-Object { -not $_.IsInherited } }',
+      '',
+      '    foreach ($r in $regeln) {',
+      '        [PSCustomObject]@{',
+      '            Ordner     = $o.FullName',
+      '            Ebene      = ($o.FullName -split "\\\\").Count - ($Startordner -split "\\\\").Count',
+      '            Berechtigt = $r.IdentityReference',
+      '            Rechte     = $r.FileSystemRights',
+      '            Typ        = $r.AccessControlType',
+      '            Vererbt    = $r.IsInherited',
+      '            Besitzer   = $acl.Owner',
+      '        }',
+      '    }',
+      '}',
+      '',
+      '$ergebnis | Sort-Object Ordner, Berechtigt',
+      '',
+      '# Auffälligkeiten hervorheben',
+      '$jeder = $ergebnis | Where-Object { $_.Berechtigt -match "Jeder|Everyone|Authentifizierte Benutzer|Authenticated Users" }',
+      'if ($jeder) {',
+      '    Write-Warning "Weit gefasste Berechtigung gefunden auf: $(($jeder.Ordner | Select-Object -Unique) -join ", ")"',
+      '}'
+    ],
+    schritte:[
+      ["-Depth begrenzt den Aufwand","Eine vollständige Rekursion über eine Dateiablage kann Stunden dauern. Zwei Ebenen reichen für die meisten Prüfungen, weil dort die Freigabestruktur liegt."],
+      ["Vererbte Rechte ausblenden","Interessant ist, wo jemand vom Standard abgewichen ist. Vererbte Einträge wiederholen nur, was weiter oben steht."],
+      ["IdentityReference","Enthält den Namen hinter der SID. Erscheint hier eine rohe SID, gehört das Konto zu einem gelöschten Objekt - ein typischer Aufräumbefund."],
+      ["Besitzer mitführen","Ein unerwarteter Besitzer deutet darauf hin, dass jemand den Besitz übernommen hat - etwa nach einem takeown."],
+      ["Warnung bei Jeder","Die Gruppe Jeder auf einer Datenablage ist fast immer ein Fehler. Die Prüfung deckt beide Sprachvarianten ab."]
+    ]
+  };}
+},
+{
+  id:"netz-wlan", bereich:"Netzwerk & Fehlersuche", name:"WLAN-Profile auslesen",
+  zweck:"Listet gespeicherte Funknetze und zeigt auf Wunsch die hinterlegten Schlüssel.",
+  datei:"Get-WlanProfile.ps1", module:[], admin:true,
+  felder:[
+    {k:"MitSchluessel", l:"Schlüssel im Klartext anzeigen", t:"switch", v:"false"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$roh = netsh wlan show profiles',
+      '',
+      '$namen = $roh |',
+      '    Select-String -Pattern "(?::\\s)(.+)$" |',
+      '    ForEach-Object { $_.Matches.Groups[1].Value.Trim() } |',
+      '    Where-Object { $_ }',
+      '',
+      'if (-not $namen) {',
+      '    Write-Warning "Keine WLAN-Profile gefunden oder kein Funkadapter vorhanden."',
+      '    return',
+      '}',
+      '',
+      'foreach ($n in $namen) {',
+      '',
+      '    $detail = netsh wlan show profile name="$n" key=clear',
+      '',
+      '    $schluessel = if ($MitSchluessel) {',
+      '        ($detail | Select-String "Schlüsselinhalt|Key Content" | ForEach-Object {',
+      '            ($_ -split ":", 2)[1].Trim()',
+      '        }) -join ""',
+      '    } else { "(ausgeblendet)" }',
+      '',
+      '    $auth = ($detail | Select-String "Authentifizierung|Authentication" | Select-Object -First 1)',
+      '',
+      '    [PSCustomObject]@{',
+      '        Netz          = $n',
+      '        Sicherheit    = if ($auth) { ($auth -split ":", 2)[1].Trim() } else { "unbekannt" }',
+      '        Schluessel    = $schluessel',
+      '    }',
+      '}'
+    ],
+    schritte:[
+      ["Externes Werkzeug einbinden","Für WLAN-Profile gibt es kein Cmdlet. netsh liefert reinen Text, der zerlegt werden muss - ein gutes Beispiel für die Grenze zwischen beiden Welten."],
+      ["Select-String mit Gruppe","Der reguläre Ausdruck greift alles nach dem Doppelpunkt ab. Über Matches.Groups[1] kommt man an genau diesen Teil."],
+      ["Zweisprachig suchen","Die Ausgabe von netsh ist übersetzt. Wer nur nach Key Content sucht, findet auf einem deutschen System nichts."],
+      ["key=clear braucht Rechte","Ohne Administratorrechte bleibt das Feld leer - kein Fehler, nur eine leere Ausgabe."],
+      ["Schlüssel nur auf Anforderung","Kennwörter im Klartext gehören nicht in eine Standardausgabe, die womöglich in einem Ticket landet."]
+    ]
+  };}
+},
+{
+  id:"netz-firewall", bereich:"Netzwerk & Fehlersuche", name:"Firewallregel anlegen",
+  zweck:"Erstellt eine eingehende Regel für einen Port und prüft danach, ob sie greift.",
+  datei:"New-Firewallregel.ps1", module:[], admin:true,
+  felder:[
+    {k:"RegelName",  l:"Anzeigename der Regel", t:"text", v:"Anwendung-8080"},
+    {k:"Port",       l:"Port",                  t:"int",  v:"8080"},
+    {k:"Protokoll",  l:"Protokoll",             t:"select", v:"TCP", opt:["TCP","UDP"]},
+    {k:"Profil",     l:"Gilt für Profil",       t:"select", v:"Domain", opt:["Domain","Private","Public","Any"]},
+    {k:"Quellbereich", l:"Erlaubte Quelladressen (leer = alle)", t:"text", v:"192.168.1.0/24"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      'if (Get-NetFirewallRule -DisplayName $RegelName -ErrorAction SilentlyContinue) {',
+      '    Write-Warning "Regel $RegelName existiert bereits - Abbruch."',
+      '    return',
+      '}',
+      '',
+      '$regel = @{',
+      '    DisplayName = $RegelName',
+      '    Direction   = "Inbound"',
+      '    Protocol    = $Protokoll',
+      '    LocalPort   = $Port',
+      '    Action      = "Allow"',
+      '    Profile     = $Profil',
+      '    Description = "Angelegt am $(Get-Date -Format yyyy-MM-dd)"',
+      '}',
+      'if ($Quellbereich) { $regel.RemoteAddress = $Quellbereich }',
+      '',
+      'if ($PSCmdlet.ShouldProcess($RegelName, "Firewallregel anlegen")) {',
+      '    New-NetFirewallRule @regel -ErrorAction Stop | Out-Null',
+      '}',
+      '',
+      'Get-NetFirewallRule -DisplayName $RegelName |',
+      '    Select-Object DisplayName, Enabled, Direction, Action, Profile,',
+      '                  @{n="Port";   e={ ($_ | Get-NetFirewallPortFilter).LocalPort }},',
+      '                  @{n="Quelle"; e={ ($_ | Get-NetFirewallAddressFilter).RemoteAddress }}',
+      '',
+      'Write-Verbose "Gegenprobe von einem anderen Rechner: Test-NetConnection $env:COMPUTERNAME -Port $Port"'
+    ],
+    schritte:[
+      ["Erst prüfen, dann anlegen","Gleichnamige Regeln sind erlaubt und führen zu einem unübersichtlichen Regelwerk, in dem niemand mehr weiß, welche greift."],
+      ["Quelladressen einschränken","Eine Regel ohne RemoteAddress öffnet den Port für das gesamte Netz. Die Einschränkung auf ein Subnetz ist der wichtigste Unterschied zwischen einer sauberen und einer bequemen Regel."],
+      ["Profil bewusst wählen","Domain gilt nur im Firmennetz, Public im fremden WLAN. Wer Any wählt, öffnet den Port auch unterwegs."],
+      ["Filter gesondert abfragen","Port und Adressbereich stehen nicht im Regelobjekt selbst, sondern in eigenen Filterobjekten - deshalb die berechneten Eigenschaften."],
+      ["Gegenprobe von außen","Eine Regel lokal zu sehen heißt nicht, dass der Port erreichbar ist. Der Test muss von einem anderen Rechner kommen."]
+    ]
+  };}
+},
+{
+  id:"netz-freigaben", bereich:"Netzwerk & Fehlersuche", name:"Freigaben und offene Dateien",
+  zweck:"Zeigt Freigaben, wer gerade verbunden ist und welche Dateien blockiert sind.",
+  datei:"Get-FreigabenStatus.ps1", module:[], admin:true,
+  felder:[
+    {k:"Rechner", l:"Rechner (leer = lokal)", t:"text", v:""},
+    {k:"OhneAdmin", l:"Administrative Freigaben ausblenden", t:"switch", v:"true"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$verbindung = if ($Rechner) { @{ CimSession = New-CimSession -ComputerName $Rechner } } else { @{} }',
+      '',
+      '$freigaben = Get-SmbShare @verbindung',
+      'if ($OhneAdmin) { $freigaben = $freigaben | Where-Object { $_.Name -notlike "*$" } }',
+      '',
+      'Write-Host "Freigaben:" -ForegroundColor Cyan',
+      '$freigaben | ForEach-Object {',
+      '    $rechte = Get-SmbShareAccess -Name $_.Name @verbindung -ErrorAction SilentlyContinue',
+      '    [PSCustomObject]@{',
+      '        Freigabe    = $_.Name',
+      '        Pfad        = $_.Path',
+      '        Beschreibung= $_.Description',
+      '        Berechtigt  = ($rechte | ForEach-Object { "$($_.AccountName)=$($_.AccessRight)" }) -join ", "',
+      '    }',
+      '} | Format-Table -AutoSize -Wrap',
+      '',
+      'Write-Host "`nAktive Sitzungen:" -ForegroundColor Cyan',
+      'Get-SmbSession @verbindung -ErrorAction SilentlyContinue |',
+      '    Select-Object ClientComputerName, ClientUserName, NumOpens, SecondsIdle |',
+      '    Sort-Object ClientUserName | Format-Table -AutoSize',
+      '',
+      'Write-Host "`nGeöffnete Dateien:" -ForegroundColor Cyan',
+      'Get-SmbOpenFile @verbindung -ErrorAction SilentlyContinue |',
+      '    Select-Object FileId, ClientUserName, ClientComputerName, Path |',
+      '    Sort-Object ClientUserName | Format-Table -AutoSize',
+      '',
+      'Write-Host "Eine blockierte Datei freigeben: Close-SmbOpenFile -FileId <Id> -Force" -ForegroundColor DarkGray'
+    ],
+    schritte:[
+      ["Hashtabelle als Schalter","Die leere Hashtabelle für den lokalen Fall spart eine if-Verzweigung: @verbindung fügt entweder eine CimSession hinzu oder gar nichts."],
+      ["Administrative Freigaben","C$, ADMIN$ und IPC$ enden auf ein Dollarzeichen und sind unsichtbar. Sie gehören nicht in eine Übersicht der Nutzfreigaben."],
+      ["Drei Blickwinkel","Welche Freigaben es gibt, wer verbunden ist und welche Dateien offen sind - erst zusammen ergibt das ein Bild vor einem Serverneustart."],
+      ["NumOpens und SecondsIdle","Eine Sitzung mit null offenen Dateien und hoher Leerlaufzeit kann bedenkenlos getrennt werden."],
+      ["Close-SmbOpenFile","Der Weg, eine von einem Kollegen blockierte Datei freizugeben - die Änderungen dieses Benutzers gehen dabei verloren, also vorher fragen."]
+    ]
+  };}
+},
+{
+  id:"ber-html", bereich:"Dienste & Berichte", name:"HTML-Statusbericht erzeugen",
+  zweck:"Fasst Systemdaten in einer lesbaren HTML-Seite zusammen - zum Weitergeben oder Archivieren.",
+  datei:"New-Statusbericht.ps1", module:[], admin:false,
+  felder:[
+    {k:"Rechner",   l:"Rechner, durch Komma getrennt (leer = lokal)", t:"text", v:""},
+    {k:"Zieldatei", l:"Zieldatei",  t:"text", v:"C:\\Berichte\\status.html"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$ziele = if ($Rechner) { $Rechner -split "," | ForEach-Object { $_.Trim() } } else { $env:COMPUTERNAME }',
+      '',
+      '$stil = @"',
+      '<style>',
+      ' body  { font-family: Segoe UI, sans-serif; margin: 2rem; color: #222; }',
+      ' h1    { font-size: 1.4rem; }',
+      ' h2    { font-size: 1.1rem; margin-top: 2rem; border-bottom: 2px solid #0d6a63; padding-bottom: .2rem; }',
+      ' table { border-collapse: collapse; width: 100%; font-size: .9rem; }',
+      ' th    { background: #0d6a63; color: #fff; text-align: left; padding: .4rem; }',
+      ' td    { border-bottom: 1px solid #ddd; padding: .4rem; }',
+      ' .fuss { color: #777; font-size: .8rem; margin-top: 2rem; }',
+      '</style>',
+      '"@',
+      '',
+      '$teile = foreach ($ziel in $ziele) {',
+      '',
+      '    $os   = Get-CimInstance Win32_OperatingSystem -ComputerName $ziel',
+      '    $disk = Get-CimInstance Win32_LogicalDisk -ComputerName $ziel -Filter "DriveType=3"',
+      '    $dien = Get-Service -ComputerName $ziel | Where-Object { $_.StartType -eq "Automatic" -and $_.Status -ne "Running" }',
+      '',
+      '    "<h2>$ziel</h2>"',
+      '',
+      '    [PSCustomObject]@{',
+      '        Betriebssystem = $os.Caption',
+      '        Version        = $os.Version',
+      '        LetzterStart   = $os.LastBootUpTime',
+      '        FreierRAMGB    = [math]::Round($os.FreePhysicalMemory/1MB, 1)',
+      '    } | ConvertTo-Html -As List -Fragment',
+      '',
+      '    "<h3>Laufwerke</h3>"',
+      '    $disk | Select-Object DeviceID,',
+      '        @{n="FreiGB";   e={[math]::Round($_.FreeSpace/1GB,1)}},',
+      '        @{n="GesamtGB"; e={[math]::Round($_.Size/1GB,1)}},',
+      '        @{n="Frei%";    e={[math]::Round($_.FreeSpace/$_.Size*100)}} |',
+      '        ConvertTo-Html -Fragment',
+      '',
+      '    "<h3>Gestoppte automatische Dienste</h3>"',
+      '    if ($dien) { $dien | Select-Object Name, DisplayName | ConvertTo-Html -Fragment }',
+      '    else       { "<p>Keine Auffälligkeiten.</p>" }',
+      '}',
+      '',
+      '$kopf = "<h1>Statusbericht</h1><p>Erstellt am $(Get-Date -Format \'dd.MM.yyyy HH:mm\') von $env:USERNAME</p>"',
+      '$fuss = "<p class=\'fuss\'>Automatisch erzeugt - keine manuelle Prüfung.</p>"',
+      '',
+      'if (-not (Test-Path (Split-Path $Zieldatei))) {',
+      '    New-Item (Split-Path $Zieldatei) -ItemType Directory | Out-Null',
+      '}',
+      '',
+      'ConvertTo-Html -Head $stil -Body ($kopf + ($teile -join "`n") + $fuss) |',
+      '    Out-File $Zieldatei -Encoding UTF8',
+      '',
+      'Write-Host "Bericht geschrieben: $Zieldatei" -ForegroundColor Green',
+      'Get-Item $Zieldatei | Select-Object FullName, Length, LastWriteTime'
+    ],
+    schritte:[
+      ["Here-String für CSS","Die Schreibweise mit at-Zeichen und Anführungszeichen erlaubt mehrzeiligen Text samt Anführungszeichen darin - ideal für eingebettetes CSS."],
+      ["-Fragment","Erzeugt nur die Tabelle ohne Rahmen-HTML. Erst am Ende wird alles zu einer Seite zusammengesetzt."],
+      ["-As List","Für Einzelwerte eines Rechners ist die Listendarstellung lesbarer als eine Tabelle mit einer Zeile."],
+      ["Ausgabe im Schleifenrumpf","Alles, was in der Schleife ohne Zuweisung ausgegeben wird, sammelt sich in $teile - Zeichenketten und Tabellen gemischt."],
+      ["Kodierung nicht vergessen","Ohne -Encoding UTF8 zeigen Browser deutsche Umlaute falsch an."]
+    ]
+  };}
+},
+{
+  id:"ber-csv", bereich:"Dienste & Berichte", name:"CSV-Dateien zusammenführen",
+  zweck:"Fügt mehrere gleich aufgebaute CSV-Dateien zu einer zusammen und ergänzt die Herkunft.",
+  datei:"Merge-CsvDateien.ps1", module:[], admin:false,
+  felder:[
+    {k:"Ordner",    l:"Ordner mit den CSV-Dateien", t:"text", v:"C:\\Export"},
+    {k:"Muster",    l:"Dateimuster",                t:"text", v:"*.csv"},
+    {k:"Trenner",   l:"Trennzeichen",               t:"select", v:";", opt:[";",","]},
+    {k:"Zieldatei", l:"Zieldatei",                  t:"text", v:"C:\\Export\\gesamt.csv"},
+    {k:"OhneDoppel",l:"Doppelte Zeilen entfernen",  t:"switch", v:"true"}
+  ],
+  rumpf:function(){ return {
+    code:[
+      '$dateien = Get-ChildItem -Path $Ordner -Filter $Muster -File |',
+      '    Where-Object { $_.FullName -ne $Zieldatei }',
+      '',
+      'if (-not $dateien) { throw "Keine passenden Dateien in $Ordner" }',
+      '',
+      'Write-Verbose "$($dateien.Count) Dateien werden zusammengeführt"',
+      '',
+      '$alle = foreach ($d in $dateien) {',
+      '',
+      '    $zeilen = Import-Csv $d.FullName -Delimiter $Trenner -Encoding UTF8',
+      '',
+      '    Write-Verbose "$($d.Name): $(@($zeilen).Count) Zeilen"',
+      '',
+      '    $zeilen | ForEach-Object {',
+      '        $_ | Add-Member -NotePropertyName Herkunft -NotePropertyValue $d.Name -PassThru',
+      '    }',
+      '}',
+      '',
+      '# Spaltenprüfung: unterschiedliche Kopfzeilen fallen sonst erst im Ergebnis auf',
+      '$spalten = $dateien | ForEach-Object {',
+      '    ((Import-Csv $_.FullName -Delimiter $Trenner | Select-Object -First 1).PSObject.Properties.Name | Sort-Object) -join "|"',
+      '} | Select-Object -Unique',
+      '',
+      'if (@($spalten).Count -gt 1) {',
+      '    Write-Warning "Die Dateien haben unterschiedliche Spalten - das Ergebnis kann Lücken enthalten."',
+      '}',
+      '',
+      'if ($OhneDoppel) {',
+      '    $vorher = @($alle).Count',
+      '    $alle = $alle | Sort-Object * -Unique',
+      '    Write-Verbose "$($vorher - @($alle).Count) doppelte Zeilen entfernt"',
+      '}',
+      '',
+      '$alle | Export-Csv -Path $Zieldatei -NoTypeInformation -Delimiter $Trenner -Encoding UTF8',
+      '',
+      '[PSCustomObject]@{',
+      '    Dateien   = $dateien.Count',
+      '    Zeilen    = @($alle).Count',
+      '    Ziel      = $Zieldatei',
+      '}'
+    ],
+    schritte:[
+      ["Zieldatei ausschließen","Liegt das Ergebnis im selben Ordner, würde es beim nächsten Lauf mit eingelesen und die Zeilen verdoppeln sich."],
+      ["Herkunft ergänzen","Add-Member mit -PassThru hängt eine Spalte an und gibt das Objekt weiter. Ohne die Herkunft ist im Ergebnis nicht mehr nachvollziehbar, aus welcher Datei eine Zeile stammt."],
+      ["Spalten vergleichen","Import-Csv füllt fehlende Spalten stillschweigend mit leeren Werten. Die Prüfung macht abweichende Kopfzeilen sichtbar, bevor jemand mit lückenhaften Daten weiterarbeitet."],
+      ["Sort-Object * -Unique","Vergleicht über alle Eigenschaften hinweg. Achtung: Die Herkunftsspalte zählt dabei mit - identische Zeilen aus zwei Dateien bleiben deshalb erhalten."],
+      ["Trennzeichen durchreichen","Ein- und Ausgabe nutzen dasselbe Zeichen. Deutsches Excel erwartet das Semikolon."]
+    ]
+  };}
+}
+);
+
+/* =====================================================================
+   BAUKASTEN: einzelne Bausteine für eine eigene Pipeline
+   typ: quelle | schritt | aktion | ausgabe
+   felder mit t:"code" werden wörtlich in den Code eingesetzt,
+   alle anderen werden zu param-Einträgen.
+   ===================================================================== */
+
+var BAUSTEINE = [
+
+/* ---- Struktur und Freiform ---- */
+{id:"k-schleife-auf", typ:"struktur", name:"Schleife: Anfang", module:[], admin:false, ein:true,
+ kurz:"Alles Folgende je Objekt ausführen",
+ felder:[],
+ code:function(){ return [
+   'foreach ($objekt in $daten) {'
+ ];},
+ erklaerung:"Öffnet eine Schleife über alle Objekte. Alles, was danach kommt, läuft einmal je Element - $objekt ist dabei das aktuelle. Braucht am Ende den Baustein Schleife: Ende."},
+
+{id:"k-schleife-zu", typ:"struktur", name:"Schleife: Ende", module:[], admin:false, aus:true,
+ kurz:"Schleife schließen",
+ felder:[],
+ code:function(){ return ['}'];},
+ erklaerung:"Schließt die Schleife. Ohne diesen Baustein fehlt dem Skript eine schließende Klammer und PowerShell meldet einen Syntaxfehler."},
+
+{id:"k-wenn-auf", typ:"struktur", name:"Bedingung: Anfang", module:[], admin:false, ein:true,
+ kurz:"Alles Folgende nur wenn zutreffend",
+ felder:[{k:"WennBedingung", l:"Bedingung", t:"code", v:"$daten.Count -gt 0"}],
+ code:function(n, v){ return [
+   'if (' + v.WennBedingung + ') {'
+ ];},
+ erklaerung:"Führt den folgenden Abschnitt nur aus, wenn die Bedingung wahr ist. Innerhalb einer Schleife lässt sich hier auf $objekt zugreifen."},
+
+{id:"k-wenn-zu", typ:"struktur", name:"Bedingung: Ende", module:[], admin:false, aus:true,
+ kurz:"Bedingung schließen",
+ felder:[],
+ code:function(){ return ['}'];},
+ erklaerung:"Schließt den Bedingungsblock."},
+
+{id:"k-wiederholen-auf", typ:"struktur", name:"Bei Fehler wiederholen: Anfang", module:[], admin:false, ein:true,
+ kurz:"Mehrere Versuche für den Abschnitt",
+ felder:[
+   {k:"Versuche",  l:"Anzahl Versuche",        t:"int", v:"3"},
+   {k:"WartenSek", l:"Pause zwischen Versuchen (Sekunden)", t:"int", v:"5"}],
+ code:function(n){ return [
+   '$versuch = 0',
+   'do {',
+   '    $versuch++',
+   '    try {'
+ ];},
+ erklaerung:"Startet eine Wiederholschleife. Sinnvoll für alles, was am Netz hängt - eine Freigabe, die gerade nicht antwortet, ist beim zweiten Versuch oft erreichbar."},
+
+{id:"k-wiederholen-zu", typ:"struktur", name:"Bei Fehler wiederholen: Ende", module:[], admin:false, aus:true,
+ kurz:"Wiederholung schließen",
+ felder:[],
+ code:function(){ return [
+   '        $erfolg = $true',
+   '    }',
+   '    catch {',
+   '        $erfolg = $false',
+   '        Write-Warning "Versuch $versuch fehlgeschlagen: $($_.Exception.Message)"',
+   '        if ($versuch -lt $Versuche) { Start-Sleep -Seconds $WartenSek }',
+   '    }',
+   '} until ($erfolg -or $versuch -ge $Versuche)',
+   '',
+   'if (-not $erfolg) { throw "Nach $Versuche Versuchen aufgegeben." }'
+ ];},
+ erklaerung:"Schließt die Wiederholung. Die do-until-Schleife bricht ab, sobald es geklappt hat oder die Versuche aufgebraucht sind. Danach wird der Fehler weitergereicht."},
+
+{id:"x-code", typ:"struktur", name:"Eigener PowerShell-Code", module:[], admin:false,
+ kurz:"Freier Abschnitt zum Selberschreiben",
+ felder:[{k:"EigenerCode", l:"Code (mehrzeilig)", t:"mehrzeilig",
+          v:"# $daten enthält die Daten aus dem vorigen Baustein\n$daten = $daten | Where-Object { $_ }"}],
+ code:function(n, v){ return String(v.EigenerCode).split("\n");},
+ erklaerung:"Für alles, wofür es keinen Baustein gibt. Der Text wird unverändert eingesetzt - die Variable $daten führt die Daten aus dem vorigen Schritt, innerhalb einer Schleife steht $objekt zur Verfügung."},
+
+{id:"x-meldung", typ:"struktur", name:"Meldung ausgeben", module:[], admin:false,
+ kurz:"Zwischenstand sichtbar machen",
+ felder:[
+   {k:"MeldungText", l:"Text", t:"text", v:"Zwischenstand"},
+   {k:"MeldungArt",  l:"Art", t:"select", v:"Ausführlich", opt:["Ausführlich","Bildschirm","Warnung"]}],
+ code:function(n){ return [
+   'switch (' + n.MeldungArt + ') {',
+   '    "Ausführlich" { Write-Verbose "' + n.MeldungText + ' – $(@($daten).Count) Objekte" }',
+   '    "Bildschirm"  { Write-Host    "' + n.MeldungText + ' – $(@($daten).Count) Objekte" -ForegroundColor Cyan }',
+   '    "Warnung"     { Write-Warning "' + n.MeldungText + ' – $(@($daten).Count) Objekte" }',
+   '}'
+ ];},
+ erklaerung:"Zeigt, wie viele Objekte an dieser Stelle noch übrig sind. Zwischen zwei Filtern eingesetzt findet man damit sofort den Schritt, der zu viel wegwirft."},
+
+{id:"x-rueckfrage", typ:"struktur", name:"Rückfrage stellen", module:[], admin:false,
+ kurz:"Vor heiklen Schritten nachfragen",
+ felder:[{k:"FrageText", l:"Frage", t:"text", v:"Sollen die Änderungen wirklich ausgeführt werden"}],
+ code:function(n){ return [
+   '$antwort = Read-Host "' + n.FrageText + ' (j/n)"',
+   'if ($antwort -notmatch "^[jJyY]") {',
+   '    Write-Host "Abgebrochen durch Benutzer." -ForegroundColor Yellow',
+   '    exit 0',
+   '}'
+ ];},
+ erklaerung:"Hält das Skript an und wartet auf eine Bestätigung. Der reguläre Ausdruck akzeptiert j, J, y und Y - so funktioniert das Skript auch auf englischsprachigen Systemen."},
+
+{id:"x-pause", typ:"struktur", name:"Pause einlegen", module:[], admin:false,
+ kurz:"Kurz warten",
+ felder:[{k:"PauseSek", l:"Sekunden", t:"int", v:"5"}],
+ code:function(n){ return ['Start-Sleep -Seconds ' + n.PauseSek];},
+ erklaerung:"Gibt einem Dienst Zeit zu starten oder entzerrt Anfragen an einen Server. In Batchdateien war dafür früher ein ping-Trick üblich."},
+
+/* ---- Quellen ---- */
+{id:"q-liste", typ:"quelle", name:"Eigene Liste", module:[], admin:false,
+ kurz:"Aus einer Aufzählung Objekte machen",
+ felder:[{k:"Werte", l:"Werte, durch Komma getrennt", t:"text", v:"srv01,srv02,srv03"}],
+ code:function(n){ return [
+   '$daten = ' + n.Werte + ' -split "," | ForEach-Object {',
+   '    [PSCustomObject]@{ Wert = $_.Trim() }',
+   '} | Where-Object { $_.Wert }'
+ ];},
+ erklaerung:"Macht aus einer kommagetrennten Eingabe echte Objekte. Trim entfernt Leerzeichen um die Einträge, der Filter am Ende wirft leere Elemente weg, wenn jemand ein Komma zu viel setzt."},
+
+{id:"q-rechner", typ:"quelle", name:"Rechnerliste", module:[], admin:false,
+ kurz:"Zielrechner festlegen, leer bedeutet lokal",
+ felder:[{k:"Rechner", l:"Rechner, durch Komma getrennt (leer = lokal)", t:"text", v:""}],
+ code:function(n){ return [
+   '$namen = if (' + n.Rechner + ') { ' + n.Rechner + ' -split "," | ForEach-Object { $_.Trim() } }',
+   '         else { $env:COMPUTERNAME }',
+   '',
+   '$daten = foreach ($name in $namen) {',
+   '    [PSCustomObject]@{',
+   '        Rechner    = $name',
+   '        Erreichbar = Test-Connection $name -Count 1 -Quiet -ErrorAction SilentlyContinue',
+   '    }',
+   '}'
+ ];},
+ erklaerung:"Baut die Zielliste und prüft gleich die Erreichbarkeit mit. Ein leeres Feld bedeutet den eigenen Rechner - so lässt sich dasselbe Skript lokal und im Netz benutzen."},
+
+{id:"q-aduser", typ:"quelle", name:"AD-Benutzer abfragen", module:["ActiveDirectory"], admin:false,
+ kurz:"Konten aus dem Verzeichnis holen",
+ felder:[
+   {k:"Filter",        l:"AD-Filter",                        t:"text", v:"Enabled -eq $true"},
+   {k:"SuchOU",        l:"Such-OU (leer = ganze Domäne)",    t:"text", v:""},
+   {k:"Eigenschaften", l:"Zusätzliche Eigenschaften",        t:"text", v:"Department,Mail,LastLogonDate"}],
+ code:function(n){ return [
+   '$zusatz  = ' + n.Eigenschaften + ' -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ }',
+   '$abfrage = @{ Filter = ' + n.Filter + ' }',
+   'if ($zusatz) { $abfrage.Properties = $zusatz }',
+   'if (' + n.SuchOU + ') { $abfrage.SearchBase = ' + n.SuchOU + ' }',
+   '',
+   '$daten = Get-ADUser @abfrage'
+ ];},
+ erklaerung:"Filtern links: Der Filterausdruck geht an den Domänencontroller, der nur die Treffer zurückschickt. -Properties ist nötig, weil Get-ADUser sonst nur zehn Standardfelder liefert."},
+
+{id:"q-adcomputer", typ:"quelle", name:"AD-Computer abfragen", module:["ActiveDirectory"], admin:false,
+ kurz:"Computerkonten aus dem Verzeichnis",
+ felder:[
+   {k:"ComputerFilter", l:"AD-Filter", t:"text", v:"Enabled -eq $true"},
+   {k:"ComputerFelder", l:"Zusätzliche Eigenschaften", t:"text", v:"OperatingSystem,LastLogonDate,Description"}],
+ code:function(n){ return [
+   '$felder = ' + n.ComputerFelder + ' -split "," | ForEach-Object { $_.Trim() }',
+   '$daten  = Get-ADComputer -Filter ' + n.ComputerFilter + ' -Properties $felder'
+ ];},
+ erklaerung:"Liefert alle Computerkonten. Über OperatingSystem und LastLogonDate lassen sich veraltete oder längst ausgemusterte Rechner finden."},
+
+{id:"q-adgruppe", typ:"quelle", name:"Gruppenmitglieder auflösen", module:["ActiveDirectory"], admin:false,
+ kurz:"Wer ist in dieser Gruppe, auch verschachtelt",
+ felder:[{k:"GruppenName", l:"Gruppenname", t:"text", v:"G-Vertrieb"}],
+ code:function(n){ return [
+   '$daten = Get-ADGroupMember -Identity ' + n.GruppenName + ' -Recursive -ErrorAction Stop |',
+   '    Where-Object { $_.objectClass -eq "user" } |',
+   '    ForEach-Object { Get-ADUser $_.SamAccountName -Properties Department, Enabled, LastLogonDate }'
+ ];},
+ erklaerung:"-Recursive löst verschachtelte Gruppen auf. Ohne diesen Schalter fehlen genau die Konten, die im AGDLP-Muster über eine Rollengruppe berechtigt sind."},
+
+{id:"q-csv", typ:"quelle", name:"CSV-Datei einlesen", module:[], admin:false,
+ kurz:"Tabelle als Objekte laden",
+ felder:[
+   {k:"CsvPfad",    l:"Pfad zur CSV-Datei", t:"text", v:"C:\\Import\\liste.csv"},
+   {k:"CsvTrenner", l:"Trennzeichen",       t:"select", v:";", opt:[";", ","]}],
+ code:function(n){ return [
+   'if (-not (Test-Path ' + n.CsvPfad + ')) { throw "Datei nicht gefunden: ' + n.CsvPfad + '" }',
+   '',
+   '$daten = Import-Csv -Path ' + n.CsvPfad + ' -Delimiter ' + n.CsvTrenner + ' -Encoding UTF8',
+   'Write-Verbose "$(@($daten).Count) Zeilen eingelesen"'
+ ];},
+ erklaerung:"Jede Zeile wird ein Objekt, jede Spaltenüberschrift eine Eigenschaft. Das Semikolon ist das Trennzeichen, das deutsches Excel erwartet."},
+
+{id:"q-dateien", typ:"quelle", name:"Dateien auflisten", module:[], admin:false,
+ kurz:"Dateien eines Ordners einsammeln",
+ felder:[
+   {k:"Ordner",   l:"Ordner",              t:"text", v:"C:\\Daten"},
+   {k:"Muster",   l:"Dateimuster",         t:"text", v:"*"},
+   {k:"Rekursiv", l:"Unterordner einbeziehen", t:"switch", v:"true"}],
+ code:function(n){ return [
+   '$daten = Get-ChildItem -Path ' + n.Ordner + ' -Filter ' + n.Muster + ' -File -Recurse:' + n.Rekursiv + ' -ErrorAction SilentlyContinue',
+   'Write-Verbose "$(@($daten).Count) Dateien gefunden"'
+ ];},
+ erklaerung:"-File schließt Ordner aus. Die Schreibweise -Recurse:$Variable schaltet einen Schalter über einen Wert - so lässt sich das Verhalten über einen Parameter steuern."},
+
+{id:"q-dienste", typ:"quelle", name:"Dienste abfragen", module:[], admin:false,
+ kurz:"Alle Dienste als Objekte",
+ felder:[],
+ code:function(){ return ['$daten = Get-Service'];},
+ erklaerung:"Liefert Name, Anzeigename, Status und Starttyp als Objekt - dadurch lässt sich anschließend nach echten Eigenschaften filtern statt nach Textbestandteilen."},
+
+{id:"q-prozesse", typ:"quelle", name:"Prozesse abfragen", module:[], admin:false,
+ kurz:"Laufende Prozesse als Objekte",
+ felder:[],
+ code:function(){ return ['$daten = Get-Process'];},
+ erklaerung:"Enthält unter anderem CPU-Zeit, Arbeitsspeicher (WS) und den Pfad der ausführbaren Datei."},
+
+{id:"q-laufwerke", typ:"quelle", name:"Laufwerke abfragen", module:[], admin:false,
+ kurz:"Lokale Festplatten mit Belegung",
+ felder:[],
+ code:function(){ return [
+   '$daten = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Select-Object DeviceID, VolumeName,',
+   '    @{n="FreiGB";   e={[math]::Round($_.FreeSpace/1GB,1)}},',
+   '    @{n="GesamtGB"; e={[math]::Round($_.Size/1GB,1)}},',
+   '    @{n="FreiProzent"; e={ if ($_.Size) { [math]::Round($_.FreeSpace/$_.Size*100,1) } else { 0 } }}'
+ ];},
+ erklaerung:"DriveType 3 steht für lokale Festplatten. Die Umrechnung in Gigabyte passiert über berechnete Eigenschaften, damit die Werte lesbar sind."},
+
+{id:"q-ereignisse", typ:"quelle", name:"Ereignisprotokoll lesen", module:[], admin:true,
+ kurz:"Fehler und Warnungen der letzten Tage",
+ felder:[
+   {k:"LogName",  l:"Protokoll", t:"select", v:"System", opt:["System","Application","Security"]},
+   {k:"LogTage",  l:"Zeitraum in Tagen", t:"int", v:"3"},
+   {k:"LogStufe", l:"Höchste Stufe", t:"select", v:"Fehler", opt:["Nur kritisch","Fehler","Fehler und Warnungen"]}],
+ code:function(n){ return [
+   '$stufen = switch (' + n.LogStufe + ') {',
+   '    "Nur kritisch"          { 1 }',
+   '    "Fehler"                { 1, 2 }',
+   '    "Fehler und Warnungen"  { 1, 2, 3 }',
+   '}',
+   '',
+   '$daten = Get-WinEvent -FilterHashtable @{',
+   '    LogName   = ' + n.LogName,
+   '    Level     = $stufen',
+   '    StartTime = (Get-Date).AddDays(-' + n.LogTage + ')',
+   '} -ErrorAction SilentlyContinue'
+ ];},
+ erklaerung:"FilterHashtable filtert im Protokolldienst selbst und ist dadurch um ein Vielfaches schneller als ein nachgelagertes Where-Object. Stufe 1 ist kritisch, 2 Fehler, 3 Warnung."},
+
+{id:"q-software", typ:"quelle", name:"Installierte Software", module:[], admin:false,
+ kurz:"Programme aus der Registrierung",
+ felder:[],
+ code:function(){ return [
+   '$pfade = @(',
+   '    "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*"',
+   '    "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*"',
+   ')',
+   '',
+   '$daten = Get-ItemProperty -Path $pfade -ErrorAction SilentlyContinue |',
+   '    Where-Object { $_.DisplayName -and -not $_.SystemComponent } |',
+   '    Select-Object @{n="Name"; e={$_.DisplayName}},',
+   '                  @{n="Version"; e={$_.DisplayVersion}},',
+   '                  @{n="Hersteller"; e={$_.Publisher}}'
+ ];},
+ erklaerung:"Der Weg über die Registrierung statt über Win32_Product. Diese WMI-Klasse würde bei jeder Abfrage eine Konsistenzprüfung aller MSI-Pakete auslösen."},
+
+/* ---- Verarbeitungsschritte ---- */
+{id:"s-filter", typ:"schritt", name:"Filtern", module:[], admin:false,
+ kurz:"Nur behalten, was zutrifft",
+ felder:[
+   {k:"FilterFeld",     l:"Eigenschaft",    t:"text", v:"Status"},
+   {k:"FilterOperator", l:"Vergleich",      t:"select", v:"gleich",
+    opt:["gleich","ungleich","enthält","beginnt mit","größer","kleiner","ist leer","ist nicht leer"]},
+   {k:"FilterWert",     l:"Vergleichswert", t:"text", v:"Running"}],
+ code:function(n){ return [
+   '$daten = $daten | Where-Object {',
+   '    $wert = $_.' + n.FilterFeld,
+   '    switch (' + n.FilterOperator + ') {',
+   '        "gleich"          { $wert -eq ' + n.FilterWert + ' }',
+   '        "ungleich"        { $wert -ne ' + n.FilterWert + ' }',
+   '        "enthält"         { $wert -like "*' + n.FilterWert + '*" }',
+   '        "beginnt mit"     { $wert -like "' + n.FilterWert + '*" }',
+   '        "größer"          { $wert -gt ' + n.FilterWert + ' }',
+   '        "kleiner"         { $wert -lt ' + n.FilterWert + ' }',
+   '        "ist leer"        { -not $wert }',
+   '        "ist nicht leer"  { [bool]$wert }',
+   '    }',
+   '}'
+ ];},
+ erklaerung:"Der Vergleich wird über ein switch gewählt, weil ein Operator sich nicht aus einer Variablen einsetzen lässt. Die Schreibweise $_.$(...) greift eine Eigenschaft ab, deren Name erst zur Laufzeit feststeht."},
+
+{id:"s-sortieren", typ:"schritt", name:"Sortieren", module:[], admin:false,
+ kurz:"Reihenfolge festlegen",
+ felder:[
+   {k:"SortFeld",      l:"Eigenschaft", t:"text", v:"Name"},
+   {k:"SortAbsteigend",l:"Absteigend",  t:"switch", v:"false"}],
+ code:function(n){ return [
+   '$daten = $daten | Sort-Object ' + n.SortFeld + ' -Descending:' + n.SortAbsteigend
+ ];},
+ erklaerung:"Sort-Object nimmt auch mehrere Eigenschaften, durch Komma getrennt. -Descending:$Wert erlaubt es, die Richtung über einen Parameter zu steuern."},
+
+{id:"s-spalten", typ:"schritt", name:"Spalten auswählen", module:[], admin:false,
+ kurz:"Nur bestimmte Eigenschaften behalten",
+ felder:[{k:"Spalten", l:"Spalten, durch Komma getrennt", t:"text", v:"Name,Status,StartType"}],
+ code:function(n){ return [
+   '$spalten = ' + n.Spalten + ' -split "," | ForEach-Object { $_.Trim() }',
+   '$daten   = $daten | Select-Object $spalten'
+ ];},
+ erklaerung:"Reduziert die Objekte auf das Wesentliche. Das macht die Ausgabe lesbar und die CSV-Datei schmal - alles Weggelassene ist danach aber auch weg."},
+
+{id:"s-erste", typ:"schritt", name:"Anzahl begrenzen", module:[], admin:false,
+ kurz:"Nur die ersten Treffer",
+ felder:[{k:"Grenze", l:"Wie viele behalten", t:"int", v:"10"}],
+ code:function(n){ return ['$daten = $daten | Select-Object -First ' + n.Grenze];},
+ erklaerung:"Sinnvoll nach dem Sortieren, etwa für eine Bestenliste. Vorher gesetzt hätte es keinen Aussagewert, weil die Reihenfolge dann zufällig ist."},
+
+{id:"s-eindeutig", typ:"schritt", name:"Doppelte entfernen", module:[], admin:false,
+ kurz:"Jede Zeile nur einmal",
+ felder:[],
+ code:function(){ return ['$daten = $daten | Sort-Object * -Unique'];},
+ erklaerung:"Vergleicht über alle Eigenschaften hinweg. Unterscheiden sich zwei Zeilen in einem einzigen Feld, gelten sie als verschieden und bleiben beide erhalten."},
+
+{id:"s-gruppieren", typ:"schritt", name:"Gruppieren und zählen", module:[], admin:false,
+ kurz:"Wie viele je Kategorie",
+ felder:[{k:"GruppenFeld", l:"Eigenschaft zum Gruppieren", t:"text", v:"Status"}],
+ code:function(n){ return [
+   '$daten = $daten | Group-Object ' + n.GruppenFeld + ' |',
+   '    Select-Object @{n="Wert"; e={ if ($_.Name) { $_.Name } else { "(leer)" } }}, Count |',
+   '    Sort-Object Count -Descending'
+ ];},
+ erklaerung:"Aus einer langen Liste wird eine Auswertung. Die Prüfung auf leere Namen verhindert eine anonyme Zeile, wenn die Eigenschaft bei manchen Objekten nicht gesetzt ist."},
+
+{id:"s-rechnen", typ:"schritt", name:"Summe und Durchschnitt", module:[], admin:false,
+ kurz:"Zahlenwerte auswerten",
+ felder:[{k:"RechenFeld", l:"Zahlen-Eigenschaft", t:"text", v:"Length"}],
+ code:function(n){ return [
+   '$messung = $daten | Measure-Object ' + n.RechenFeld + ' -Sum -Average -Maximum -Minimum',
+   '',
+   '$daten = [PSCustomObject]@{',
+   '    Eigenschaft  = ' + n.RechenFeld,
+   '    Anzahl       = $messung.Count',
+   '    Summe        = $messung.Sum',
+   '    Durchschnitt = [math]::Round($messung.Average, 2)',
+   '    Groesster    = $messung.Maximum',
+   '    Kleinster    = $messung.Minimum',
+   '}'
+ ];},
+ erklaerung:"Measure-Object rechnet über eine Eigenschaft. Achtung: Ab hier enthält $daten nur noch ein einziges Ergebnisobjekt, keine Liste mehr."},
+
+{id:"s-spalte-neu", typ:"schritt", name:"Berechnete Spalte ergänzen", module:[], admin:false,
+ kurz:"Eigenen Wert hinzufügen",
+ felder:[
+   {k:"NeueSpalte", l:"Name der neuen Spalte", t:"text", v:"GroesseMB"},
+   {k:"NeuerWert",  l:"Ausdruck ($_ ist das Objekt)", t:"code", v:"[math]::Round($_.Length/1MB, 2)"}],
+ code:function(n, v){ return [
+   '$daten = $daten | Select-Object *, @{',
+   '    Name       = ' + n.NeueSpalte,
+   '    Expression = { ' + v.NeuerWert + ' }',
+   '}'
+ ];},
+ erklaerung:"Eine berechnete Eigenschaft hängt eine Spalte an, ohne die vorhandenen zu verlieren. Der Ausdruck wird für jedes Objekt ausgewertet, $_ ist dabei das aktuelle Element."},
+
+/* ---- Aktionen ---- */
+{id:"a-jedes", typ:"aktion", name:"Für jedes Objekt etwas tun", module:[], admin:false,
+ kurz:"Schleife mit Sicherheitsabfrage",
+ felder:[
+   {k:"Aktionstext", l:"Beschreibung der Aktion", t:"text", v:"Verarbeiten"},
+   {k:"AktionsCode", l:"Befehl ($objekt ist das Element)", t:"code", v:"Write-Verbose \"Verarbeite: $($objekt.Name)\""}],
+ code:function(n, v){ return [
+   'foreach ($objekt in $daten) {',
+   '',
+   '    if ($PSCmdlet.ShouldProcess("$objekt", ' + n.Aktionstext + ')) {',
+   '        ' + v.AktionsCode,
+   '    }',
+   '}'
+ ];},
+ erklaerung:"Jede Änderung läuft über ShouldProcess. Ein Aufruf mit -WhatIf zeigt dadurch zuerst, was geschehen würde, ohne etwas anzufassen - das setzt den Baustein CmdletBinding voraus."},
+
+{id:"a-remote", typ:"aktion", name:"Auf Rechnern ausführen", module:[], admin:false,
+ kurz:"Code über Invoke-Command verteilen",
+ felder:[
+   {k:"RemoteFeld", l:"Eigenschaft mit dem Rechnernamen", t:"text", v:"Rechner"},
+   {k:"RemoteCode", l:"Code für die Gegenstelle", t:"code", v:"Get-Service Spooler | Select-Object Name, Status"}],
+ code:function(n, v){ return [
+   '$ziele = $daten.' + n.RemoteFeld + ' | Where-Object { $_ }',
+   '',
+   '$daten = Invoke-Command -ComputerName $ziele -ErrorAction Continue -ScriptBlock {',
+   '    ' + v.RemoteCode,
+   '} | Select-Object PSComputerName, *  -ErrorAction SilentlyContinue'
+ ];},
+ erklaerung:"Invoke-Command arbeitet alle Ziele parallel ab. PSComputerName wird automatisch ergänzt und sagt, von welchem Rechner ein Ergebnis stammt. Lokale Variablen brauchen im Block das Präfix $using:."},
+
+{id:"a-warnen", typ:"aktion", name:"Warnen und Rückgabewert setzen", module:[], admin:false,
+ kurz:"Schwellwert prüfen",
+ felder:[
+   {k:"WarnBedingung", l:"Bedingung ($_ ist das Objekt)", t:"code", v:"$_.FreiProzent -lt 10"},
+   {k:"WarnText",      l:"Warntext", t:"text", v:"Speicherplatz wird knapp"}],
+ code:function(n, v){ return [
+   '$auffaellig = $daten | Where-Object { ' + v.WarnBedingung + ' }',
+   '',
+   'if ($auffaellig) {',
+   '    Write-Warning "' + n.WarnText + ' - betroffen: $(@($auffaellig).Count)"',
+   '    $auffaellig | Format-Table -AutoSize',
+   '    $global:LASTEXITCODE = 2',
+   '}'
+ ];},
+ erklaerung:"Macht aus einem Bericht eine Überwachung. Der Rückgabewert 2 lässt sich von einer Aufgabenplanung oder einem Monitoringsystem auswerten."},
+
+/* ---- Ausgabe ---- */
+{id:"o-rueckgabe", typ:"ausgabe", name:"Objekte zurückgeben", module:[], admin:false,
+ kurz:"Ergebnis in die Pipeline",
+ felder:[],
+ code:function(){ return ['$daten'];},
+ erklaerung:"Die sauberste Ausgabe: Das Ergebnis bleibt ein Objekt und lässt sich vom Aufrufer weiterfiltern, sortieren oder exportieren."},
+
+{id:"o-tabelle", typ:"ausgabe", name:"Als Tabelle anzeigen", module:[], admin:false,
+ kurz:"Formatierte Bildschirmausgabe",
+ felder:[],
+ code:function(){ return ['$daten | Format-Table -AutoSize -Wrap'];},
+ erklaerung:"Format-Cmdlets zerstören die Objektstruktur und gehören deshalb immer ans Ende. Danach darf kein Export mehr folgen."},
+
+{id:"o-grid", typ:"ausgabe", name:"In Fenster anzeigen", module:[], admin:false,
+ kurz:"Sortier- und filterbares Fenster",
+ felder:[{k:"GridTitel", l:"Fenstertitel", t:"text", v:"Ergebnis"}],
+ code:function(n){ return ['$daten | Out-GridView -Title ' + n.GridTitel + ' -Wait'];},
+ erklaerung:"Out-GridView öffnet ein eigenes Fenster mit Suchfeld und Spaltensortierung. Mit -PassThru statt -Wait wird daraus ein Auswahldialog, dessen Markierung zurück in die Pipeline geht."},
+
+{id:"o-csv", typ:"ausgabe", name:"Als CSV speichern", module:[], admin:false,
+ kurz:"Für Excel und Weiterverarbeitung",
+ felder:[
+   {k:"CsvZiel",     l:"Zieldatei",    t:"text", v:"C:\\Berichte\\ergebnis.csv"},
+   {k:"CsvZielTrenner", l:"Trennzeichen", t:"select", v:";", opt:[";", ","]}],
+ code:function(n){ return [
+   '$ordner = Split-Path ' + n.CsvZiel,
+   'if (-not (Test-Path $ordner)) { New-Item $ordner -ItemType Directory | Out-Null }',
+   '',
+   '$daten | Export-Csv -Path ' + n.CsvZiel + ' -NoTypeInformation -Delimiter ' + n.CsvZielTrenner + ' -Encoding UTF8',
+   'Write-Verbose "Geschrieben: ' + n.CsvZiel + '"'
+ ];},
+ erklaerung:"Semikolon und UTF8 sorgen dafür, dass deutsches Excel die Datei samt Umlauten richtig öffnet. Der Ordner wird bei Bedarf angelegt."},
+
+{id:"o-html", typ:"ausgabe", name:"Als HTML-Bericht speichern", module:[], admin:false,
+ kurz:"Lesbare Seite zum Weitergeben",
+ felder:[
+   {k:"HtmlZiel",  l:"Zieldatei", t:"text", v:"C:\\Berichte\\bericht.html"},
+   {k:"HtmlTitel", l:"Überschrift", t:"text", v:"Auswertung"}],
+ code:function(n){ return [
+   '$stil = @"',
+   '<style>',
+   ' body  { font-family: Segoe UI, sans-serif; margin: 2rem; color: #222; }',
+   ' table { border-collapse: collapse; width: 100%; font-size: .9rem; }',
+   ' th    { background: #0d6a63; color: #fff; text-align: left; padding: .4rem; }',
+   ' td    { border-bottom: 1px solid #ddd; padding: .4rem; }',
+   '</style>',
+   '"@',
+   '',
+   '$kopf = "<h1>' + n.HtmlTitel + '</h1><p>Erstellt am $(Get-Date -Format \'dd.MM.yyyy HH:mm\') auf $env:COMPUTERNAME</p>"',
+   '',
+   '$ordner = Split-Path ' + n.HtmlZiel,
+   'if (-not (Test-Path $ordner)) { New-Item $ordner -ItemType Directory | Out-Null }',
+   '',
+   '$daten | ConvertTo-Html -Head $stil -PreContent $kopf | Out-File ' + n.HtmlZiel + ' -Encoding UTF8',
+   'Write-Verbose "Geschrieben: ' + n.HtmlZiel + '"'
+ ];},
+ erklaerung:"Der Here-String hält das CSS mehrzeilig. Sein Abschluss muss immer ganz links stehen - deshalb ist dieser Block auch im eingerückten try-Teil nicht eingerückt."},
+
+{id:"o-datei", typ:"ausgabe", name:"Als Textdatei speichern", module:[], admin:false,
+ kurz:"Einfache Protokolldatei",
+ felder:[{k:"TextZiel", l:"Zieldatei", t:"text", v:"C:\\Berichte\\ergebnis.txt"}],
+ code:function(n){ return [
+   '$daten | Format-Table -AutoSize | Out-File ' + n.TextZiel + ' -Encoding UTF8 -Width 200'
+ ];},
+ erklaerung:"-Width verhindert, dass breite Tabellen nach 80 Zeichen abgeschnitten werden - ein Fehler, der erst beim Öffnen der Datei auffällt."}
+];
+
 /* =====================================================================
    ANWENDUNG
    ===================================================================== */
@@ -3474,6 +5104,9 @@ var state = {
   suche: "",
   katModul: "alle",
   katSuche: "",
+  genModus: "rezept",
+  bauListe: [],
+  genMeta: { datei: "Mein-Skript.ps1", autor: "", synopsis: "Eigenes Skript aus Bausteinen" },
   genRezept: "ad-benutzer",
   genWerte: {},
   genOpt: { requires:true, hilfe:true, binding:true, strict:true, fehler:true, protokoll:false, csv:false, verbose:true },
@@ -3800,8 +5433,89 @@ function genWert(r, f){
 
 function psText(v){ return "'" + String(v).replace(/'/g, "''") + "'"; }
 
+function einruecken(zeilen, praefix){
+  // Here-Strings dürfen nicht eingerückt werden: ihr Abschluss "@ muss in Spalte 1 stehen.
+  var drin = false;
+  return zeilen.map(function(l){
+    var roh = l.trim();
+    if (drin) {
+      if (roh === '"@' || roh === "'@") { drin = false; }
+      return l;
+    }
+    if (/@["']\s*$/.test(l)) { drin = true; return praefix + l; }
+    return l ? praefix + l : "";
+  });
+}
+
+function bausteinFinden(id){
+  for (var i = 0; i < BAUSTEINE.length; i++) { if (BAUSTEINE[i].id === id) { return BAUSTEINE[i]; } }
+  return null;
+}
+
+function baukastenBauen(){
+  var felder = [], module = [], admin = false, code = [], schritte = [], belegt = {};
+  var tiefe = 0;
+  if (!state.genWerte.baukasten) { state.genWerte.baukasten = {}; }
+
+  state.bauListe.forEach(function(eintrag, idx){
+    var b = bausteinFinden(eintrag.b);
+    if (!b) { return; }
+
+    var namen = {}, werte = {};
+    (b.felder || []).forEach(function(f){
+      var key = f.k, zaehler = 2;
+      while (belegt[key]) { key = f.k + zaehler; zaehler++; }
+      belegt[key] = true;
+
+      felder.push({ k:key, l:(idx + 1) + ". " + b.name + " – " + f.l, t:f.t, v:f.v, opt:f.opt });
+      namen[f.k] = "$" + key;
+
+      var gesetzt = state.genWerte.baukasten[key];
+      werte[f.k] = (gesetzt !== undefined) ? gesetzt : f.v;
+    });
+
+    (b.module || []).forEach(function(m){ if (module.indexOf(m) === -1) { module.push(m); } });
+    if (b.admin) { admin = true; }
+
+    if (b.aus && tiefe > 0) { tiefe--; }
+    var einzug = new Array(tiefe + 1).join("    ");
+
+    if (code.length) { code.push(""); }
+    code.push(einzug + "# " + (idx + 1) + ". " + b.name);
+    code = code.concat(einruecken(b.code(namen, werte), einzug));
+    if (b.ein) { tiefe++; }
+
+    schritte.push([(idx + 1) + ". " + b.name, b.erklaerung]);
+  });
+
+  if (!code.length) {
+    code = ["Write-Host 'Noch kein Baustein gewählt.' -ForegroundColor Yellow"];
+    schritte = [["Noch leer", "Oben einen Baustein hinzufügen. Sinnvoll ist die Reihenfolge Quelle, dann Verarbeitung, dann Ausgabe."]];
+  }
+
+  if (tiefe > 0) {
+    code.push("");
+    code.push("# ACHTUNG: " + tiefe + " Block/Blöcke sind nicht geschlossen - passenden Ende-Baustein ergänzen.");
+    schritte.unshift(["Nicht geschlossen", "Es fehlen " + tiefe + " schließende Bausteine. Zu jedem Anfang gehört ein Ende, sonst meldet PowerShell einen Syntaxfehler."]);
+  }
+
+  var datei = (state.genMeta.datei || "Mein-Skript.ps1").trim();
+  if (!/\.ps1$/i.test(datei)) { datei += ".ps1"; }
+
+  return {
+    id: "baukasten",
+    name: state.genMeta.synopsis || "Eigenes Skript",
+    zweck: state.genMeta.synopsis || "Aus Bausteinen zusammengesetzt.",
+    datei: datei,
+    module: module,
+    admin: admin,
+    felder: felder,
+    rumpf: function(){ return { code: code, schritte: schritte }; }
+  };
+}
+
 function baueSkript(){
-  var r  = rezeptFinden(state.genRezept);
+  var r  = (state.genModus === "bau") ? baukastenBauen() : rezeptFinden(state.genRezept);
   var o  = state.genOpt;
   var z  = [];          // Zeilen
   var bl = [];          // Erklärungsblöcke
@@ -3839,6 +5553,9 @@ function baueSkript(){
     z.push("    " + (o.binding ? "Zeigt, was geschehen würde, ohne etwas zu ändern." : "Führt das Skript mit den Standardwerten aus."));
     z.push("");
     z.push(".NOTES");
+    if (state.genModus === "bau" && state.genMeta.autor) {
+      z.push("    Autor:  " + state.genMeta.autor);
+    }
     z.push("    Erstellt mit dem Skript-Generator, Stand " + new Date().toISOString().slice(0, 10) + ".");
     z.push("    Vor dem Einsatz auf einem Produktivsystem in einer Testumgebung prüfen.");
     z.push("#>");
@@ -3856,6 +5573,7 @@ function baueSkript(){
   var teile = [];
   for (i = 0; i < r.felder.length; i++) {
     var f = r.felder[i];
+    if (f.t === "code" || f.t === "mehrzeilig") { continue; }
     var wert = genWert(r, f);
     var zeile = "    # " + f.l + "\n";
     if (f.t === "int") {
@@ -3912,7 +5630,7 @@ function baueSkript(){
 
   if (o.csv) {
     kern = ["$ausgabe = & {"]
-      .concat(kern.map(function(l){ return l ? "    " + l : ""; }))
+      .concat(einruecken(kern, "    "))
       .concat([
         "}",
         "",
@@ -3929,7 +5647,7 @@ function baueSkript(){
 
   if (o.fehler) {
     z.push("try {");
-    z = z.concat(kern.map(function(l){ return l ? "    " + l : ""; }));
+    z = z.concat(einruecken(kern, "    "));
     z.push("}");
     z.push("catch {");
     z.push("    Write-Error \"Abbruch: $($_.Exception.Message)\"");
@@ -3962,9 +5680,16 @@ function generatorZeichnen(main){
   wrap.innerHTML =
     '<div class="eyebrow">Nachschlagen</div>' +
     "<h2>Skript-Generator</h2>" +
-    '<div class="lede">Aufgabe wählen, Felder ausfüllen, Gerüst zusammenstellen - heraus kommt ein Skript nach den Vorgaben aus dem Kapitel <em>Skriptaufbau</em>. Jeder Block wird darunter erklärt.</div>' +
+    '<div class="lede">' + REZEPTE.length + " Aufgaben aus " + bereiche.length +
+      " Bereichen. Aufgabe wählen, Felder ausfüllen, Gerüst zusammenstellen - heraus kommt ein Skript nach den Vorgaben aus dem Kapitel <em>Skriptaufbau</em>. Jeder Block wird darunter erklärt.</div>" +
+
+    '<div class="gentabs">' +
+      '<button class="gentab' + (state.genModus === "rezept" ? " on" : "") + '" data-m="rezept">Fertiges Rezept</button>' +
+      '<button class="gentab' + (state.genModus === "bau"    ? " on" : "") + '" data-m="bau">Baukasten</button>' +
+    "</div>" +
 
     '<div class="genstep"><span class="gnum">1</span>Aufgabe</div>' +
+    '<div id="genwahl"' + (state.genModus === "bau" ? ' style="display:none"' : "") + '>' +
     '<div class="selwrap"><select id="genrez">' +
       bereiche.map(function(b){
         return '<optgroup label="' + b + '">' +
@@ -3973,7 +5698,22 @@ function generatorZeichnen(main){
           "</optgroup>";
       }).join("") +
     "</select></div>" +
-    '<div class="genzweck" id="genzweck"></div>' +
+    '<div class="genzweck" id="genzweck"></div></div>' +
+
+    '<div id="genbau"' + (state.genModus === "bau" ? "" : ' style="display:none"') + '>' +
+      '<div class="bauhilfe">Reihenfolge: erst eine <b>Quelle</b>, dann beliebig viele <b>Schritte</b>, am Ende eine <b>Ausgabe</b>. Die Daten wandern von Baustein zu Baustein in der Variablen <code>$daten</code>. Schleifen und Bedingungen brauchen immer ein passendes Ende.</div>' +
+      '<div class="genfeld"><label>Dateiname</label><input type="text" id="metaDatei" value="' + esc(state.genMeta.datei) + '"><span class="gvar">.ps1</span></div>' +
+      '<div class="genfeld"><label>Kurzbeschreibung</label><input type="text" id="metaZweck" value="' + esc(state.genMeta.synopsis) + '"><span class="gvar">.SYNOPSIS</span></div>' +
+      '<div class="genfeld"><label>Autor</label><input type="text" id="metaAutor" value="' + esc(state.genMeta.autor) + '"><span class="gvar">.NOTES</span></div>' +
+      '<div class="bauspeicher">' +
+        '<select id="bauVorlagen"></select>' +
+        '<button class="btn ghost" id="bauLaden">Laden</button>' +
+        '<button class="btn ghost" id="bauSpeichern">Speichern</button>' +
+        '<button class="btn ghost" id="bauLoeschen">Löschen</button>' +
+      "</div>" +
+      '<div id="baugewaehlt"></div>' +
+      '<div id="baupalette"></div>' +
+    "</div>" +
 
     '<div class="genstep"><span class="gnum">2</span>Werte</div>' +
     '<div id="genfelder"></div>' +
@@ -3992,6 +5732,31 @@ function generatorZeichnen(main){
     '<div class="note warn"><b>Vor dem ersten Einsatz</b>Erzeugte Skripte gehören in eine Testumgebung, nicht direkt auf ein Produktivsystem. Bei allem, was ändert oder löscht, zuerst mit <code>-WhatIf</code> starten.</div>';
 
   main.appendChild(wrap);
+
+  ["Datei", "Zweck", "Autor"].forEach(function(feld){
+    var el = wrap.querySelector("#meta" + feld);
+    if (!el) { return; }
+    el.addEventListener("input", function(){
+      if (feld === "Datei") { state.genMeta.datei = el.value; }
+      if (feld === "Zweck") { state.genMeta.synopsis = el.value; }
+      if (feld === "Autor") { state.genMeta.autor = el.value; }
+      generatorAusgabe();
+    });
+  });
+
+  if (wrap.querySelector("#bauVorlagen")) {
+    vorlagenListe();
+    wrap.querySelector("#bauSpeichern").addEventListener("click", vorlageSpeichern);
+    wrap.querySelector("#bauLaden").addEventListener("click", vorlageLaden);
+    wrap.querySelector("#bauLoeschen").addEventListener("click", vorlageLoeschen);
+  }
+
+  Array.prototype.forEach.call(wrap.querySelectorAll("[data-m]"), function(t){
+    t.addEventListener("click", function(){
+      state.genModus = t.getAttribute("data-m");
+      zeige("generator");
+    });
+  });
 
   var sel = wrap.querySelector("#genrez");
   sel.value = state.genRezept;
@@ -4024,7 +5789,8 @@ function generatorZeichnen(main){
   });
 
   wrap.querySelector("#genReset").addEventListener("click", function(){
-    state.genWerte[state.genRezept] = {};
+    if (state.genModus === "bau") { state.genWerte.baukasten = {}; state.bauListe = []; baukastenZeichnen(); }
+    else { state.genWerte[state.genRezept] = {}; }
     generatorFelder();
     generatorAusgabe();
   });
@@ -4045,15 +5811,143 @@ function generatorZeichnen(main){
     }
   });
 
+  if (state.genModus === "bau") { baukastenZeichnen(); }
   generatorFelder();
   generatorAusgabe();
 }
 
+var BAU_GRUPPEN = [
+  ["quelle",  "Quelle – woher die Daten kommen"],
+  ["struktur","Struktur – Schleifen, Bedingungen, eigener Code"],
+  ["schritt", "Verarbeitung – filtern, sortieren, auswerten"],
+  ["aktion",  "Aktion – etwas tun oder prüfen"],
+  ["ausgabe", "Ausgabe – wohin das Ergebnis geht"]
+];
+
+function vorlagenLesen(){
+  try { return JSON.parse(localStorage.getItem("kv-baukasten") || "{}"); } catch(e) { return {}; }
+}
+function vorlagenSchreiben(v){
+  try { localStorage.setItem("kv-baukasten", JSON.stringify(v)); } catch(e) {}
+}
+function vorlagenListe(){
+  var sel = document.getElementById("bauVorlagen");
+  if (!sel) { return; }
+  var v = vorlagenLesen();
+  var namen = Object.keys(v).sort();
+  sel.innerHTML = namen.length
+    ? namen.map(function(n){ return '<option value="' + esc(n) + '">' + esc(n) + "</option>"; }).join("")
+    : '<option value="">(nichts gespeichert)</option>';
+}
+function vorlageSpeichern(){
+  if (!state.bauListe.length) { alert("Es ist noch kein Baustein gewählt."); return; }
+  var name = prompt("Name für diese Zusammenstellung:", state.genMeta.synopsis || "Meine Vorlage");
+  if (!name) { return; }
+  var v = vorlagenLesen();
+  v[name] = { liste: state.bauListe, werte: state.genWerte.baukasten || {}, meta: state.genMeta };
+  vorlagenSchreiben(v);
+  vorlagenListe();
+  document.getElementById("bauVorlagen").value = name;
+}
+function vorlageLaden(){
+  var sel = document.getElementById("bauVorlagen");
+  if (!sel || !sel.value) { return; }
+  var e = vorlagenLesen()[sel.value];
+  if (!e) { return; }
+  state.bauListe = e.liste || [];
+  state.genWerte.baukasten = e.werte || {};
+  if (e.meta) { state.genMeta = e.meta; }
+  zeige("generator");
+}
+function vorlageLoeschen(){
+  var sel = document.getElementById("bauVorlagen");
+  if (!sel || !sel.value) { return; }
+  if (!confirm("Zusammenstellung " + sel.value + " löschen?")) { return; }
+  var v = vorlagenLesen();
+  delete v[sel.value];
+  vorlagenSchreiben(v);
+  vorlagenListe();
+}
+
+function baukastenZeichnen(){
+  var gew = document.getElementById("baugewaehlt");
+  var pal = document.getElementById("baupalette");
+  if (!gew || !pal) { return; }
+
+  if (!state.bauListe.length) {
+    gew.innerHTML = '<div class="bauleer">Noch nichts gewählt – unten einen Baustein hinzufügen.</div>';
+  } else {
+    gew.innerHTML = state.bauListe.map(function(e, i){
+      var b = bausteinFinden(e.b);
+      if (!b) { return ""; }
+      return '<div class="baurow t-' + b.typ + '">' +
+        '<span class="bnr">' + (i + 1) + "</span>" +
+        '<div class="btxt"><b>' + b.name + "</b><span>" + b.kurz + "</span></div>" +
+        '<button class="bbtn" data-kopie="' + i + '" title="verdoppeln">&#43;</button>' +
+        '<button class="bbtn" data-hoch="' + i + '" title="nach oben"' + (i === 0 ? " disabled" : "") + ">&#8593;</button>" +
+        '<button class="bbtn" data-runter="' + i + '" title="nach unten"' + (i === state.bauListe.length - 1 ? " disabled" : "") + ">&#8595;</button>" +
+        '<button class="bbtn weg" data-weg="' + i + '" title="entfernen">&#10005;</button>' +
+      "</div>";
+    }).join("");
+  }
+
+  pal.innerHTML = BAU_GRUPPEN.map(function(g){
+    var teile = BAUSTEINE.filter(function(b){ return b.typ === g[0]; });
+    if (!teile.length) { return ""; }
+    return '<div class="baugruppe"><div class="bautitel">' + g[1] + "</div>" +
+      teile.map(function(b){
+        return '<button class="baucard t-' + b.typ + '" data-add="' + b.id + '">' +
+               "<b>" + b.name + "</b><span>" + b.kurz + "</span></button>";
+      }).join("") + "</div>";
+  }).join("");
+
+  function neu(){ baukastenZeichnen(); generatorFelder(); generatorAusgabe(); }
+
+  Array.prototype.forEach.call(pal.querySelectorAll("[data-add]"), function(x){
+    x.addEventListener("click", function(){
+      state.bauListe.push({ b: x.getAttribute("data-add") });
+      neu();
+    });
+  });
+  Array.prototype.forEach.call(gew.querySelectorAll("[data-kopie]"), function(x){
+    x.addEventListener("click", function(){
+      var i = parseInt(x.getAttribute("data-kopie"), 10);
+      state.bauListe.splice(i + 1, 0, { b: state.bauListe[i].b });
+      neu();
+    });
+  });
+  Array.prototype.forEach.call(gew.querySelectorAll("[data-weg]"), function(x){
+    x.addEventListener("click", function(){
+      state.bauListe.splice(parseInt(x.getAttribute("data-weg"), 10), 1);
+      neu();
+    });
+  });
+  Array.prototype.forEach.call(gew.querySelectorAll("[data-hoch]"), function(x){
+    x.addEventListener("click", function(){
+      var i = parseInt(x.getAttribute("data-hoch"), 10);
+      var t = state.bauListe[i - 1]; state.bauListe[i - 1] = state.bauListe[i]; state.bauListe[i] = t;
+      neu();
+    });
+  });
+  Array.prototype.forEach.call(gew.querySelectorAll("[data-runter]"), function(x){
+    x.addEventListener("click", function(){
+      var i = parseInt(x.getAttribute("data-runter"), 10);
+      var t = state.bauListe[i + 1]; state.bauListe[i + 1] = state.bauListe[i]; state.bauListe[i] = t;
+      neu();
+    });
+  });
+}
+
 function generatorFelder(){
-  var r  = rezeptFinden(state.genRezept);
+  var r  = (state.genModus === "bau") ? baukastenBauen() : rezeptFinden(state.genRezept);
   var bx = document.getElementById("genfelder");
-  document.getElementById("genzweck").textContent = r.zweck;
+  var zw = document.getElementById("genzweck");
+  if (zw) { zw.textContent = r.zweck; }
   if (!state.genWerte[r.id]) { state.genWerte[r.id] = {}; }
+  if (!r.felder.length) {
+    bx.innerHTML = '<div class="bauleer">Die gewählten Bausteine brauchen keine Eingaben.</div>';
+    return;
+  }
 
   bx.innerHTML = r.felder.map(function(f){
     var w = genWert(r, f);
@@ -4062,6 +5956,10 @@ function generatorFelder(){
       eingabe = '<label class="genschalter"><input type="checkbox" data-f="' + f.k + '"' +
                 (String(w) === "true" ? " checked" : "") + "> " + f.l + "</label>";
       return '<div class="genfeld schalter">' + eingabe + "</div>";
+    }
+    if (f.t === "mehrzeilig") {
+      return '<div class="genfeld lang"><label>' + f.l + "</label>" +
+             '<textarea data-f="' + f.k + '" rows="5" spellcheck="false">' + esc(w) + "</textarea></div>";
     }
     if (f.t === "select") {
       eingabe = '<select data-f="' + f.k + '">' + f.opt.map(function(o){
@@ -4077,6 +5975,7 @@ function generatorFelder(){
 
   Array.prototype.forEach.call(bx.querySelectorAll("[data-f]"), function(el){
     var ereignis = (el.type === "checkbox" || el.tagName === "SELECT") ? "change" : "input";
+    if (el.tagName === "TEXTAREA") { ereignis = "input"; }
     el.addEventListener(ereignis, function(){
       state.genWerte[r.id][el.getAttribute("data-f")] =
         (el.type === "checkbox") ? String(el.checked) : el.value;
